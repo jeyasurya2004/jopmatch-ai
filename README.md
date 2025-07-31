@@ -137,6 +137,26 @@ For production deployment with user authentication and data persistence:
 
 ### Build for Production
 ```bash
+# Install dependencies
+npm install
+
+# Build the application
+npm run build
+
+# Preview the production build locally
+npm run preview
+```
+
+### Deploy to GitHub Pages
+
+The application is automatically deployed to GitHub Pages on every push to the `main` branch. The deployment is handled by GitHub Actions.
+
+Access the live site: [https://jeyasurya2004.github.io/jopmatch-ai/](https://jeyasurya2004.github.io/jopmatch-ai/)
+
+#### Manual Deployment
+If you need to deploy manually:
+
+```bash
 npm run build
 ```
 
