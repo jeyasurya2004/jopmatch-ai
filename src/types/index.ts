@@ -67,24 +67,16 @@ export interface PersonalityProfile {
   summary: string;
 }
 
+// Updated LearningPath interface to reflect the new data structure
 export interface LearningPath {
-  skill: string;
-  courses: Course[];
-  timeEstimate: string;
-  priority: 'high' | 'medium' | 'low';
+  title: string;
+  skillCovered: string;
+  description: string;
+  link: string;
+  provider: string;
 }
 
-export interface Course {
-  title: string;
-  provider: string;
-  url: string;
-  duration: string;
-  difficulty: string;
-  // Alternative properties that might be present in the data
-  area?: string;
-  suggestion?: string;
-  priority?: string;
-}
+// The Course interface is no longer needed with the flattened structure.
 
 export interface JobSuggestion {
   id: string;

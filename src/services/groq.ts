@@ -941,65 +941,47 @@ IMPORTANT:
 
   async generateRecommendations(resumeData: string, targetRole: string, skillGaps: string): Promise<string> {
     try {
-      // Get the API key and model for the recommendation agent
       const { apiKey, model } = this.getAgentConfig('RECOMMENDATION');
       
-      // Prepare the prompt with resume data, target role, and skill gaps
-      const prompt = `Based on the following resume data and identified skill gaps, provide personalized career recommendations:
+      const prompt = `
+      You are a Learning Path Advisor. Your goal is to suggest a relevant and structured learning path for a candidate targeting a specific job role, based on their skill gaps. You must focus on suggesting topics and skills, not on finding web links.
 
-Resume Summary:
-${resumeData}
+      **Input Data:**
+      1.  **Target Role:** ${targetRole}
+      2.  **Identified Skill Gaps:** ${skillGaps}
+      3.  **Candidate's Resume Summary:**
+          ${resumeData}
 
-Target Role: ${targetRole}
+      **Instructions:**
+      1.  For each skill gap, suggest a clear, actionable learning step.
+      2.  For each step, provide a concise title and a one-sentence description.
+      3.  Suggest a reputable provider or platform (e.g., Coursera, freeCodeCamp, official documentation) where the user might find such a resource.
+      4.  Return a single, valid JSON object. Do NOT include any web links or URLs.
 
-Identified Skill Gaps:
-${skillGaps}
+      **Required JSON Output Structure:**
+      {
+        "learningPathSuggestions": [
+          {
+            "title": "Mastering React Hooks",
+            "skillCovered": "React",
+            "description": "A course focusing on advanced state management with React Hooks.",
+            "provider": "freeCodeCamp"
+          },
+          {
+            "title": "TypeScript for Professionals",
+            "skillCovered": "TypeScript",
+            "description": "Learn static typing and advanced TypeScript features for robust applications.",
+            "provider": "Official TypeScript Docs"
+          }
+        ],
+        "summary": "A concise, encouraging summary of the recommended learning plan."
+      }
+      `;
 
-Please provide recommendations in the following JSON format:
-{
-  "careerPath": {
-    "shortTerm": ["suggestion1", "suggestedRole1"],
-    "midTerm": ["suggestion2", "suggestedRole2"],
-    "longTerm": ["suggestion3", "suggestedRole3"]
-  },
-  "skillDevelopment": [
-    {
-      "skill": "Python",
-      "resources": ["Advanced Python Programming (Coursera)", "Real Python"],
-      "timeframe": "2 months"
-    }
-  ],
-  "certifications": [
-    {
-      "name": "Google Data Analytics Professional Certificate",
-      "issuer": "Coursera",
-      "relevance": "Builds foundational data analysis and SQL skills critical for data science"
-    },
-    {
-      "name": "Microsoft Certified: Azure Data Scientist Associate",
-      "issuer": "Microsoft",
-      "relevance": "Validates expertise in cloud-based data science workflows and machine learning"
-    },
-    {
-      "name": "SAS Certified Specialist: Statistics Using SAS",
-      "issuer": "SAS",
-      "relevance": "Strengthens statistical analysis capabilities for advanced data science applications"
-    }
-  ],
-  "networking": [
-    "Join local Data Science Meetup groups and participate in Kaggle competitions for industry exposure",
-    "Connect with data science professionals on LinkedIn and engage with AI/ML communities like r/MachineLearning"
-  ],
-  "summary": "Prioritize SQL and statistical mastery while leveraging existing ML/AI expertise. Build cloud/data engineering capabilities for long-term scalability. Validate skills through industry-recognized certifications while actively engaging with data science communities to accelerate career progression."
-}
-
-IMPORTANT: Only return the JSON object. Do not include any other text, explanations, or markdown formatting. Ensure the JSON is properly formatted with no trailing commas or syntax errors.`;
-
-      // Prepare messages for the API request
       const messages: GroqMessage[] = [
         { 
           role: 'system', 
-          content: 'You are an expert career counselor and professional development advisor. Provide detailed, actionable recommendations for career growth and skill development.'
+          content: 'You are an expert career counselor. You suggest topics for learning paths but do not provide URLs.'
         },
         { 
           role: 'user', 
@@ -1007,81 +989,18 @@ IMPORTANT: Only return the JSON object. Do not include any other text, explanati
         }
       ];
 
-      // Make the API request with JSON response format
-      const response = await this.makeRequest(
-        apiKey,
-        model,
-        messages,
-        0.7, // temperature
-        2048, // maxTokens
-        true, // require JSON response
-        3, // maxRetries
-        1000 // initialDelay
-      );
+      const response = await this.makeRequest(apiKey, model, messages, 0.6, 4096, true, 3, 1000);
+      return response;
 
-      // Parse and validate the response
-      try {
-        // Clean the response to remove any markdown or extra text
-        let cleanedResponse = response.trim();
-        
-        // Remove markdown code block markers if present
-        if (cleanedResponse.startsWith('```json')) {
-          cleanedResponse = cleanedResponse.substring(7);
-        }
-        if (cleanedResponse.startsWith('```')) {
-          cleanedResponse = cleanedResponse.substring(3);
-        }
-        if (cleanedResponse.endsWith('```')) {
-          cleanedResponse = cleanedResponse.substring(0, cleanedResponse.length - 3);
-        }
-        
-        // Try to find and extract JSON object
-        const jsonStart = cleanedResponse.indexOf('{');
-        const jsonEnd = cleanedResponse.lastIndexOf('}');
-        
-        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
-          cleanedResponse = cleanedResponse.substring(jsonStart, jsonEnd + 1);
-        }
-        
-        console.log('Attempting to parse cleaned response:', cleanedResponse);
-        const parsedResponse = JSON.parse(cleanedResponse);
-        return JSON.stringify(parsedResponse, null, 2);
-      } catch (parseError) {
-        console.error('Error parsing recommendations response:', parseError);
-        console.error('Raw response that failed to parse:', response);
-        // Return a structured error response
-        return JSON.stringify({
-          error: 'Failed to parse recommendations',
-          details: 'The recommendations could not be processed. Please try again.',
-          timestamp: new Date().toISOString(),
-          rawResponse: response.substring(0, 1000) + (response.length > 1000 ? '...' : '')
-        }, null, 2);
-      }
     } catch (error) {
-      console.error('Error generating recommendations:', error);
-      // Return a structured error response
+      console.error('Error generating recommendation suggestions:', error);
       return JSON.stringify({
-        error: 'Failed to generate recommendations',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString(),
-        fallbackRecommendations: {
-          careerPath: {
-            shortTerm: ["Focus on core skills for the target role"],
-            midTerm: ["Aim for intermediate positions in your field"],
-            longTerm: ["Target senior/leadership positions"]
-          },
-          skillDevelopment: [
-            {
-              skill: "Core skills for " + targetRole,
-              resources: ["Online courses", "Workshops", "Mentorship programs"],
-              timeframe: "3-6 months"
-            }
-          ],
-          summary: "Focus on developing core skills and gaining relevant experience for your target role of " + targetRole
-        }
-      }, null, 2);
+        learningPathSuggestions: [],
+        summary: "Could not generate learning recommendations at this time due to an error."
+      });
     }
   }
+
 
   async generateFeedback(resumeData: string, allResults: any): Promise<string> {
     try {
@@ -1089,45 +1008,70 @@ IMPORTANT: Only return the JSON object. Do not include any other text, explanati
       const { apiKey, model } = this.getAgentConfig('FEEDBACK');
       
       // Prepare the prompt with resume data and analysis results
-      const prompt = `Please provide comprehensive feedback on the following resume and analysis results.
-        Be constructive, specific, and provide actionable advice. Focus on strengths, areas for improvement,
-        and specific recommendations to enhance the candidate's job prospects.
-        
-        Resume Summary:
-        ${resumeData}
-        
-        Analysis Results:
-        ${JSON.stringify(allResults, null, 2)}
-        
-        Please provide feedback in the following EXACT JSON format. ALL fields are required and must be present. DO NOT wrap this structure in another object. Return ONLY this JSON object, nothing else:
-        {
-          "overallScore": number (0-100) - MANDATORY FIELD - Overall readiness score from 0-100 (MUST be present and MUST be a number between 0-100),
-          "summary": "Overall summary of feedback and next steps" - REQUIRED FIELD - Overall feedback summary,
-          "strengths": ["strength1", "strength2", "strength3"] - REQUIRED FIELD - List of candidate strengths,
-          "areasForImprovement": [
-            {
-              "area": "Specific area needing improvement",
-              "suggestion": "Specific suggestion for improvement",
-              "priority": "high/medium/low"
-            }
-          ] - REQUIRED FIELD - List of areas for improvement,
-          "keyRecommendations": [
-            {
-              "category": "Category name",
-              "recommendation": "Specific recommendation",
-              "impact": "Expected impact of this change"
-            }
-          ] - REQUIRED FIELD - Key career recommendations (MUST be an array of objects with category, recommendation, and impact fields),
-          "nextSteps": ["step1", "step2", "step3"] - REQUIRED FIELD - Actionable next steps (MUST be an array of strings)
-        }
-        
-        IMPORTANT: Only return the JSON object. Do not include any other text, explanations, or markdown formatting. Ensure the JSON is properly formatted with no trailing commas or syntax errors.`;
+      const prompt = `
+      You are a highly specialized feedback generation bot. Your sole purpose is to generate a single, valid JSON object containing a comprehensive and actionable feedback report.
 
+      **CRITICAL INSTRUCTIONS:**
+      1.  **Analyze the Input:** Use the provided resume data and analysis results to generate your feedback.
+      2.  **Strict JSON Format:** Your entire response MUST be a single, valid JSON object. Do not include any text, explanations, or markdown formatting before or after the JSON.
+      3.  **Mandatory Fields:** The JSON object MUST include all of the following fields: \`summary\`, \`strengths\`, \`areasForImprovement\`, \`keyRecommendations\`, \`nextSteps\`, and \`overallScore\`.
+      4.  **Be Comprehensive:** Where applicable, provide at least 3-5 detailed points for each list (\`strengths\`, \`areasForImprovement\`, \`keyRecommendations\`, \`nextSteps\`).
+      5.  **Self-Correction:** Before you finalize your response, review it one last time to ensure it is a valid JSON object and that all mandatory fields are present and correctly formatted.
+
+      **Input Data:**
+      *   **Resume Summary:**
+          ${resumeData}
+      *   **Analysis Results:**
+          ${JSON.stringify(allResults, null, 2)}
+      
+      **Perfect JSON Output Example:**
+      {
+        "summary": "The candidate has a strong foundation in machine learning and AI. To pivot to a backend development role, the key is to build and showcase experience with relevant backend technologies and frameworks. The current resume is AI-focused and needs to be tailored to highlight transferable skills and new backend projects.",
+        "strengths": [
+          "Expert-level Python proficiency, a core skill for backend development.",
+          "Intermediate SQL skills, demonstrating a foundational understanding of databases.",
+          "Experience building an end-to-end application (Vision Assistant), which shows project completion ability.",
+          "Proven ability to learn complex technical topics quickly, as shown by AI/ML project work."
+        ],
+        "areasForImprovement": [
+          "Gain hands-on experience with at least one major backend framework like Django, Flask, or FastAPI.",
+          "Build projects demonstrating RESTful API design, including user authentication and database modeling.",
+          "Learn essential backend technologies such as Docker for containerization, PostgreSQL for databases, and Redis for caching.",
+          "Develop a deeper understanding of system design principles for scalable applications."
+        ],
+        "keyRecommendations": [
+          {
+            "category": "Project Development",
+            "recommendation": "Create a new GitHub project that is a full-featured REST API. It should include user registration/login, protected endpoints, and CRUD operations on a database.",
+            "impact": "Provides concrete, undeniable proof of backend development skills and understanding."
+          },
+          {
+            "category": "Resume Tailoring",
+            "recommendation": "Create a dedicated 'Backend Developer' version of the resume. Replace the current summary with one focused on backend aspirations and skills. Emphasize transferable skills like Python, SQL, and problem-solving.",
+            "impact": "Will make the resume pass the initial screening by recruiters looking for backend developers."
+          },
+          {
+            "category": "Conceptual Learning",
+            "recommendation": "Study system design fundamentals. Watch tutorials on designing scalable web services and read articles on microservices vs. monolithic architectures.",
+            "impact": "Prepares you for technical interviews and for building robust, real-world applications."
+          }
+        ],
+        "nextSteps": [
+          "Take an online course on FastAPI or Django.",
+          "Build a simple To-Do List API with user authentication.",
+          "Learn the basics of Docker to containerize the new API project.",
+          "Read 'Grokking the System Design Interview' or similar resources.",
+          "Update your LinkedIn profile to reflect a focus on backend development and list your new projects."
+        ],
+        "overallScore": 65
+      }
+      `;
+      
       // Prepare messages for the API request
       const messages: GroqMessage[] = [
         { 
           role: 'system', 
-          content: 'You are an expert resume reviewer and career coach with deep knowledge of ATS systems and hiring practices. Provide detailed, actionable feedback to help the candidate improve their resume and job prospects.'
+          content: 'You are an expert resume reviewer and career coach. Your only job is to return a valid JSON object with the specified mandatory fields. Do not omit any fields.'
         },
         { 
           role: 'user', 
@@ -1141,224 +1085,29 @@ IMPORTANT: Only return the JSON object. Do not include any other text, explanati
         model,
         messages,
         0.5, // Lower temperature for more focused feedback
-        3072, // Higher max tokens for comprehensive feedback
+        4096, // Increased max tokens for the longer lists
         true, // require JSON response
         3, // maxRetries
         1000 // initialDelay
       );
 
-      console.log('GroqService: Raw feedback response:', response);
+      return response;
 
-      // Parse and validate the response
-      try {
-        const parsedResponse = JSON.parse(response);
-        console.log('GroqService: Parsed feedback response:', parsedResponse);
-        
-        // Strict validation: Check if all required fields are present
-        const requiredFields = [
-          'overallScore',
-          'strengths',
-          'areasForImprovement',
-          'keyRecommendations',
-          'nextSteps',
-          'summary'
-        ];
-        
-        const missingFields = requiredFields.filter(field => 
-          parsedResponse[field] === undefined || 
-          parsedResponse[field] === null ||
-          (Array.isArray(parsedResponse[field]) && parsedResponse[field].length === 0 && 
-           ['keyRecommendations', 'nextSteps', 'strengths', 'areasForImprovement'].includes(field))
-        );
-        
-        // Recursive function to find overallScore in any nested structure
-        function findOverallScore(obj: any, path: string = ''): number | null {
-          if (typeof obj !== 'object' || obj === null) {
-            return null;
-          }
-          
-          // Check if this object has overallScore
-          if (obj.hasOwnProperty('overallScore')) {
-            console.log(`GroqService: Found overallScore property at path: ${path}.overallScore, value:`, obj.overallScore);
-            if (typeof obj.overallScore === 'number' && 
-                obj.overallScore >= 0 && 
-                obj.overallScore <= 100) {
-              console.log(`GroqService: Valid overallScore found: ${obj.overallScore}`);
-              return obj.overallScore;
-            } else {
-              console.log(`GroqService: Invalid overallScore found:`, obj.overallScore, 'Type:', typeof obj.overallScore);
-              return null;
-            }
-          }
-          
-          // Recursively check all nested objects
-          for (const key in obj) {
-            if (obj.hasOwnProperty(key)) {
-              const newPath = path ? `${path}.${key}` : key;
-              console.log(`GroqService: Checking path: ${newPath}`);
-              if (typeof obj[key] === 'object' && obj[key] !== null) {
-                const score = findOverallScore(obj[key], newPath);
-                if (score !== null) {
-                  return score;
-                }
-              }
-            }
-          }
-          
-          return null;
-        }
-        
-        // Handle responses wrapped in feedback object
-        if (parsedResponse.feedback && typeof parsedResponse.feedback === 'object') {
-          console.log('GroqService: Found feedback wrapper, extracting data');
-          
-          // Copy all data from feedback object to top level
-          const feedbackData = parsedResponse.feedback;
-          
-          // Extract overallScore from feedback wrapper if not at top level
-          if (!parsedResponse.hasOwnProperty('overallScore') && feedbackData.hasOwnProperty('overallScore')) {
-            parsedResponse.overallScore = feedbackData.overallScore;
-          }
-          
-          // Extract all other fields from feedback wrapper if not at top level
-          const fieldsToExtract = [
-            'strengths', 'areasForImprovement', 'formattingFeedback', 
-            'contentFeedback', 'atsOptimization', 'keyRecommendations', 
-            'nextSteps', 'summary', 'recommendations'
-          ];
-          
-          fieldsToExtract.forEach(field => {
-            if (!parsedResponse.hasOwnProperty(field) && feedbackData.hasOwnProperty(field)) {
-              parsedResponse[field] = feedbackData[field];
-            }
-          });
-          
-          // Special handling for recommendations -> keyRecommendations mapping
-          // Always map recommendations to keyRecommendations if keyRecommendations is not already set
-          if (!parsedResponse.hasOwnProperty('keyRecommendations') && feedbackData.hasOwnProperty('recommendations')) {
-            parsedResponse.keyRecommendations = feedbackData.recommendations;
-          }
-          
-          // Special handling for additionalTips -> nextSteps mapping
-          // Map additionalTips to nextSteps if nextSteps is not already set
-          if (!parsedResponse.hasOwnProperty('nextSteps') && feedbackData.hasOwnProperty('additionalTips')) {
-            parsedResponse.nextSteps = feedbackData.additionalTips;
-          }
-          
-          // Map specificRecommendations to nextSteps if nextSteps is not already set
-          if (!parsedResponse.hasOwnProperty('nextSteps') && feedbackData.hasOwnProperty('specificRecommendations')) {
-            parsedResponse.nextSteps = feedbackData.specificRecommendations;
-          }
-          
-          // NOTE: actionableAdvice should NOT be mapped to nextSteps
-          // nextSteps should be generated by the LLM directly
-          
-          // Map specificSuggestions to nextSteps if nextSteps is not already set
-          if (!parsedResponse.hasOwnProperty('nextSteps') && feedbackData.hasOwnProperty('specificSuggestions')) {
-            parsedResponse.nextSteps = feedbackData.specificSuggestions;
-          }
-          
-          // Map recommendedNextSteps to nextSteps if nextSteps is not already set
-          if (!parsedResponse.hasOwnProperty('nextSteps') && feedbackData.hasOwnProperty('recommendedNextSteps')) {
-            parsedResponse.nextSteps = feedbackData.recommendedNextSteps;
-          }
-          
-          // Map suggestedActivities to nextSteps if nextSteps is not already set
-          if (!parsedResponse.hasOwnProperty('nextSteps') && feedbackData.hasOwnProperty('suggestedActivities')) {
-            parsedResponse.nextSteps = feedbackData.suggestedActivities;
-          }
-          
-          // Ensure keyRecommendations and nextSteps are properly extracted
-          if (!parsedResponse.hasOwnProperty('keyRecommendations') && feedbackData.hasOwnProperty('keyRecommendations')) {
-            parsedResponse.keyRecommendations = feedbackData.keyRecommendations;
-          }
-          
-          if (!parsedResponse.hasOwnProperty('nextSteps') && feedbackData.hasOwnProperty('nextSteps')) {
-            parsedResponse.nextSteps = feedbackData.nextSteps;
-          }
-        }
-        
-        // Try to find overallScore anywhere in the response
-        const foundOverallScore = findOverallScore(parsedResponse);
-        
-        console.log('GroqService: Searching for overallScore in response');
-        console.log('GroqService: Full response structure:', JSON.stringify(parsedResponse, null, 2));
-        console.log('GroqService: Found overallScore:', foundOverallScore);
-        
-        // If overallScore is still missing, add a default one
-        if (foundOverallScore === null) {
-          console.warn('GroqService: overallScore is missing, adding default score of 75');
-          parsedResponse.overallScore = 75; // Default score
-        } else if (!parsedResponse.hasOwnProperty('overallScore')) {
-          // Add overallScore to the top level if it's not already there
-          parsedResponse.overallScore = foundOverallScore;
-        }
-        
-        // For other missing fields, log warning but continue
-        const nonScoreMissingFields = missingFields.filter(field => field !== 'overallScore');
-        if (nonScoreMissingFields.length > 0) {
-          console.warn('GroqService: Missing non-critical fields in LLM response:', nonScoreMissingFields);
-        }
-        
-        const stringifiedResponse = JSON.stringify(parsedResponse, null, 2);
-        console.log('GroqService: Stringified feedback response:', stringifiedResponse);
-        return stringifiedResponse;
-      } catch (parseError) {
-        console.error('Error parsing feedback response:', parseError);
-        // Throw the error to trigger a retry
-        throw new Error(`Failed to parse feedback response: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
-      }
     } catch (error) {
       console.error('Error generating feedback:', error);
-      // Return a structured fallback response with valid overallScore
+      // Return a structured fallback response with valid fields
       const fallbackResponse = {
-        overallScore: 50, // Default score when LLM fails
-        strengths: ["Relevant experience", "Good technical skills"],
-        areasForImprovement: [
-          {
-            area: "Resume content",
-            suggestion: "Quantify your achievements with specific metrics",
-            priority: "high"
-          }
-        ],
-        formattingFeedback: {
-          score: 7,
-          comments: ["Good structure but could include more metrics"],
-          suggestions: ["Add specific numbers to achievements", "Use consistent date formats"]
-        },
-        contentFeedback: {
-          score: 7,
-          comments: ["Relevant experience but could be more detailed"],
-          suggestions: ["Add more specific examples of achievements", "Include more technical skills"]
-        },
-        atsOptimization: {
-          score: 6,
-          comments: ["Could be more ATS-friendly"],
-          suggestions: ["Use more industry keywords", "Simplify formatting for ATS parsing"]
-        },
-        keyRecommendations: [
-          {
-            category: "Content",
-            recommendation: "Quantify your achievements with specific metrics",
-            impact: "Will better demonstrate your impact and value to employers"
-          },
-          {
-            category: "Formatting",
-            recommendation: "Use more consistent formatting throughout",
-            impact: "Will improve readability and ATS compatibility"
-          }
-        ],
-        nextSteps: [
-            "Add specific metrics to quantify achievements",
-            "Use more consistent formatting throughout",
-            "Incorporate more industry keywords for ATS optimization"
-        ],
-        summary: "Your resume shows promise but could be strengthened with more specific examples of your achievements and their impact."
+        overallScore: 50,
+        strengths: ["Could not generate feedback at this time."],
+        areasForImprovement: ["There was an error in the AI service."],
+        keyRecommendations: [],
+        nextSteps: ["Please try running the analysis again."],
+        summary: "An error occurred while generating comprehensive feedback."
       };
-      console.log('GroqService: Using fallback response:', fallbackResponse);
-      return JSON.stringify(fallbackResponse, null, 2);
+      return JSON.stringify(fallbackResponse);
     }
   }
+
 
   async fetchJobMatches(resumeData: string, targetRole: string, location: string = 'remote'): Promise<string> {
     try {

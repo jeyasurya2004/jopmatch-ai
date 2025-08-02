@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test": "vitest"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",
@@ -23,6 +24,7 @@
     "@radix-ui/react-toast": "^1.2.14",
     "@types/react-router-dom": "^5.3.3",
     "@types/tesseract.js": "^0.0.2",
+    "axios": "^1.11.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "docx4js": "^3.3.0",

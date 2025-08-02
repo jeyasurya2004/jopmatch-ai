@@ -1,50 +1,74 @@
 import { groqService } from '../groq';
+import { searchAgent } from './SearchAgent';
+import { LearningPath } from '../../types';
+
+// Helper function to introduce a delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+interface RecommendationResult {
+  learningPaths: LearningPath[];
+  summary: string;
+}
 
 export class RecommendationAgent {
-  async generateRecommendations(resumeData: any, jobRole: string, missingSkills: string[]): Promise<any> {
+  async generateRecommendations(resumeData: any, jobRole: string, missingSkills: string[]): Promise<RecommendationResult> {
     try {
-      console.log('RecommendationAgent: Generating recommendations for role:', jobRole);
+      console.log('RecommendationAgent: Generating recommendation ideas for:', jobRole);
       
-      // Use groqService to make the API call with rate limiting
+      const resumeSummary = resumeData.summary || JSON.stringify(resumeData);
       const skillGaps = missingSkills.join(", ");
-      const recommendationsResult = await groqService.generateRecommendations(JSON.stringify(resumeData), jobRole, skillGaps);
+
+      // Step 1: Get learning path suggestions from the LLM (without links)
+      const suggestionsResult = await groqService.generateRecommendations(resumeSummary, jobRole, skillGaps);
       
-      const result = recommendationsResult;
-      console.log('RecommendationAgent: Raw recommendations:', result);
+      let suggestions: any;
+      try {
+          suggestions = JSON.parse(suggestionsResult);
+      } catch (e) {
+          console.error('RecommendationAgent: Failed to parse suggestions JSON.', e);
+          return { learningPaths: [], summary: "Could not generate a learning path." };
+      }
+
+      const learningPathSuggestions = suggestions.learningPathSuggestions || [];
+      const summary = suggestions.summary || 'Here is a tailored learning path to help you bridge your skill gaps.';
       
-      const cleanedResponse = this.cleanJsonResponse(result);
-      const parsed = JSON.parse(cleanedResponse);
+      // Step 2: Use the SearchAgent to find real links for each suggestion
+      const enrichedLearningPaths: LearningPath[] = [];
+
+      for (const suggestion of learningPathSuggestions) {
+        // Formulate a targeted search query
+        const query = `${suggestion.skillCovered} course ${suggestion.provider} free`;
+        const searchResults = await searchAgent.search(query, 1); // Get the top 1 result
+
+        if (searchResults.length > 0) {
+          const topResult = searchResults[0];
+          enrichedLearningPaths.push({
+            title: suggestion.title,
+            skillCovered: suggestion.skillCovered,
+            description: suggestion.description,
+            link: topResult.url, // Use the real URL from the search result
+            provider: suggestion.provider,
+          });
+        }
+
+        // **FIXED HERE**: Introduce a small delay between search requests
+        await delay(300); // Wait for 300 milliseconds between searches
+      }
+
+      console.log('RecommendationAgent: Enriched learning paths with real links:', enrichedLearningPaths);
       
       return {
-        learningPaths: Array.isArray(parsed.learningPaths) ? parsed.learningPaths : [],
-        overallPath: parsed.overallPath || 'Follow the recommended learning paths sequentially',
-        estimatedTimeToCompletion: parsed.estimatedTimeToCompletion || '3-6 months'
+        learningPaths: enrichedLearningPaths,
+        summary: summary,
       };
       
     } catch (error) {
       console.error('RecommendationAgent: Error generating recommendations:', error);
-      throw error;
+      return {
+        learningPaths: [],
+        summary: 'An unexpected error occurred while generating your learning path.',
+      };
     }
-  }
-
-  private cleanJsonResponse(response: string): string {
-    let cleaned = response.trim();
-    
-    // Find JSON content
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-    }
-    
-    // Remove control characters that can cause JSON parsing to fail
-    cleaned = cleaned.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
-    
-    // Remove trailing commas
-    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-    
-    return cleaned;
   }
 }
 

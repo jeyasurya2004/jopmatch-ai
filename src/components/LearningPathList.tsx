@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, ExternalLink, AlertCircle } from 'lucide-react';
+import { BookOpen, ExternalLink, Briefcase } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { LearningPath } from '../types';
@@ -9,30 +9,8 @@ interface LearningPathListProps {
 }
 
 export const LearningPathList: React.FC<LearningPathListProps> = ({ learningPaths }) => {
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-red-100 text-red-700 border-red-200';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'low':
-        return 'bg-green-100 text-green-700 border-green-200';
-      default:
-        return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return <AlertCircle className="w-3 h-3" />;
-      default:
-        return null;
-    }
-  };
-
   return (
-    <Card className="w-full">
+    <Card className="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-green-600" />
@@ -51,63 +29,33 @@ export const LearningPathList: React.FC<LearningPathListProps> = ({ learningPath
           </div>
         ) : (
           <div className="space-y-4">
-            {learningPaths.map((path, _) => (
-              <div key={path.skill} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-gray-900">{path.skill}</h4>
-                    <span className={`px-2 py-1 text-xs rounded-full border flex items-center gap-1 ${getPriorityColor(path.priority)}`}>
-                      {getPriorityIcon(path.priority)}
-                      {path.priority} priority
-                    </span>
+            {learningPaths.map((path, index) => (
+              // Add a unique key here using the path's link and index
+              <div key={path.link + index} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-gray-50/50 dark:bg-gray-900/20">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3">
+                  <div className="flex-grow">
+                    <h4 className="font-semibold text-gray-900 dark:text-white">{path.title}</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{path.description}</p>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-gray-600">
-                    <Clock className="w-4 h-4" />
-                    {path.timeEstimate}
-                  </div>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-2 w-full sm:w-auto"
+                    onClick={() => window.open(path.link, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    View Resource
+                  </Button>
                 </div>
 
-                {/* Courses */}
-                <div className="space-y-2">
-                  {path.courses.map((course, _) => (
-                    <div key={course.title || course.suggestion || course.area || Math.random().toString()} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-900">{String(course.title || course.suggestion || course.area || 'Untitled Course')}</span>
-                          <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                            {String(course.difficulty || course.priority || 'Beginner')}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <span className="font-medium">{course.provider || 'Unknown Provider'}</span>
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {course.duration || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center gap-1"
-                        onClick={() => course.url !== '#' && window.open(course.url, '_blank')}
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        View
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Progress Indicator */}
-                <div className="mt-3 pt-3 border-t border-gray-200">
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <span>Progress: Not started</span>
-                    <span>{path.courses.length} course{path.courses.length > 1 ? 's' : ''} recommended</span>
+                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700 pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase className="w-3 h-3 text-blue-500" />
+                    <span>Skill: {path.skillCovered}</span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-                    <div className="bg-green-600 h-1 rounded-full" style={{ width: '0%' }}></div>
+                  <div className="flex items-center gap-1.5">
+                    <img src={`https://www.google.com/s2/favicons?domain=${new URL(path.link).hostname}`} alt={`${path.provider} favicon`} className="w-3 h-3" />
+                    <span>Provider: {path.provider}</span>
                   </div>
                 </div>
               </div>
