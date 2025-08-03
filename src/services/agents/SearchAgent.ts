@@ -8,29 +8,25 @@ interface SearchResult {
 }
 
 export class SearchAgent {
-  private searchApiUrl: string;
+  // searchApiUrl is no longer needed as the proxy handles routing
 
-  constructor(searchApiUrl: string) {
-    this.searchApiUrl = searchApiUrl.endsWith('/') ? searchApiUrl : `${searchApiUrl}/`;
+  constructor() {
+    // Constructor is empty as searchApiUrl is removed
   }
 
   async search(query: string, maxResults: number = 5): Promise<SearchResult[]> {
     try {
       console.log(`SearchAgent: Searching for: "${query}"`);
       
-      const apiUrl = `${this.searchApiUrl}search?q=${encodeURIComponent(query)}&format=json&categories=general`;
+      // Construct the URL to the backend proxy, which now handles Algolia searches
+      // Use a relative path so that the Vite proxy can intercept it.
+      const apiUrl = `/search-proxy?q=${encodeURIComponent(query)}`;
 
       const response = await axios.get(apiUrl, { timeout: 5000 });
 
       if (response.data && Array.isArray(response.data.results)) {
         const searchResults: SearchResult[] = response.data.results
-          .filter((result: any) => result.title && result.url && result.content)
-          .slice(0, maxResults)
-          .map((result: any) => ({
-            title: result.title,
-            url: result.url,
-            snippet: result.content,
-          }));
+          .slice(0, maxResults); // The backend proxy already filters and formats results
         
         console.log(`SearchAgent: Found ${searchResults.length} results.`);
         return searchResults;
@@ -39,6 +35,10 @@ export class SearchAgent {
     } catch (error) {
       if (axios.isAxiosError(error)) {
         console.error(`SearchAgent: Axios error performing search for "${query}": ${error.message}`);
+        if (error.response) {
+          console.error('SearchAgent: API responded with status:', error.response.status);
+          console.error('SearchAgent: API response data:', error.response.data);
+        }
       } else {
         console.error(`SearchAgent: Generic error performing search for "${query}":`, error);
       }
@@ -47,12 +47,6 @@ export class SearchAgent {
   }
 }
 
-// Trying another public SearXNG instance
-const searxngApiUrl = import.meta.env.VITE_SEARXNG_API_URL || 'https://search.rhscz.eu';
-
-if (!searxngApiUrl) {
-  console.error("VITE_SEARXNG_API_URL is not defined and no fallback is provided.");
-  // You might want to throw an error here in a real application
-}
-
-export const searchAgent = new SearchAgent(searxngApiUrl || '');
+// The search agent no longer needs the full backend proxy URL, as Vite handles the proxying.
+// It will now use a relative path that Vite's proxy will intercept.
+export const searchAgent = new SearchAgent();
