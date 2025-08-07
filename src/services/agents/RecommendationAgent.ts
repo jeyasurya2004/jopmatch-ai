@@ -36,8 +36,9 @@ export class RecommendationAgent {
       const enrichedLearningPaths: LearningPath[] = [];
 
       for (const suggestion of learningPathSuggestions) {
-        // Formulate a targeted search query
-        const query = `${suggestion.skillCovered} course ${suggestion.provider} free`;
+        // Reverted to a simpler, more robust query based on the core skill
+        const query = `${suggestion.skillCovered}`;
+        
         const searchResults = await searchAgent.search(query, 1); // Get the top 1 result
 
         if (searchResults.length > 0) {
@@ -51,7 +52,7 @@ export class RecommendationAgent {
           });
         }
 
-        // **FIXED HERE**: Introduce a small delay between search requests
+        // Introduce a small delay between search requests
         await delay(300); // Wait for 300 milliseconds between searches
       }
 
