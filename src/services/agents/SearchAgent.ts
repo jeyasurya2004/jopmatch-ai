@@ -14,13 +14,17 @@ export class SearchAgent {
     // Constructor is empty as searchApiUrl is removed
   }
 
-  async search(query: string, maxResults: number = 5): Promise<SearchResult[]> {
+  async search(query: string, maxResults: number = 10, type?: string): Promise<SearchResult[]> {
     try {
-      console.log(`SearchAgent: Searching for: "${query}"`);
+      console.log(`SearchAgent: Searching for: "${query}"${type ? ` with type: "${type}"` : ''}`);
       
       // Construct the URL to the backend proxy, which now handles Algolia searches
       // Use a relative path so that the Vite proxy can intercept it.
-      const apiUrl = `/search-proxy?q=${encodeURIComponent(query)}`;
+      let apiUrl = `/search-proxy?q=${encodeURIComponent(query)}`;
+
+      if (type) {
+        apiUrl += `&type=${encodeURIComponent(type)}`;
+      }
 
       const response = await axios.get(apiUrl, { timeout: 5000 });
 

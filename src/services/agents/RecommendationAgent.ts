@@ -36,18 +36,27 @@ export class RecommendationAgent {
       const enrichedLearningPaths: LearningPath[] = [];
 
       for (const suggestion of learningPathSuggestions) {
-        // Reverted to a simpler, more robust query based on the core skill
+        // Use only the skillCovered as the query for simplicity
         const query = `${suggestion.skillCovered}`;
         
-        const searchResults = await searchAgent.search(query, 1); // Get the top 1 result
+        // Pass 'course' as the type to narrow down search results to learning resources
+        const searchResults = await searchAgent.search(query, 1, 'course'); // Get the top 1 result of type 'course'
 
-        if (searchResults.length > 0) {
+        if (searchResults.length > 0 && searchResults[0].url) {
           const topResult = searchResults[0];
           enrichedLearningPaths.push({
             title: suggestion.title,
             skillCovered: suggestion.skillCovered,
             description: suggestion.description,
-            link: topResult.url, // Use the real URL from the search result
+            link: topResult.url,
+            provider: suggestion.provider,
+          });
+        } else {
+          enrichedLearningPaths.push({
+            title: suggestion.title,
+            skillCovered: suggestion.skillCovered,
+            description: suggestion.description,
+            link: '', // Explicitly empty link if no valid search result or URL
             provider: suggestion.provider,
           });
         }

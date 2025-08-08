@@ -9,6 +9,17 @@ interface LearningPathListProps {
 }
 
 export const LearningPathList: React.FC<LearningPathListProps> = ({ learningPaths }) => {
+
+  // Helper function to validate URL
+  const isValidUrl = (urlString: string) => {
+    try {
+      new URL(urlString);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   return (
     <Card className="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
       <CardHeader>
@@ -54,7 +65,11 @@ export const LearningPathList: React.FC<LearningPathListProps> = ({ learningPath
                     <span>Skill: {path.skillCovered}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <img src={`https://www.google.com/s2/favicons?domain=${new URL(path.link).hostname}`} alt={`${path.provider} favicon`} className="w-3 h-3" />
+                    {isValidUrl(path.link) ? (
+                      <img src={`https://www.google.com/s2/favicons?domain=${new URL(path.link).hostname}`} alt={`${path.provider} favicon`} className="w-3 h-3" />
+                    ) : (
+                      <BookOpen className="w-3 h-3 text-gray-500" /> // Using a generic icon as a fallback
+                    )}
                     <span>Provider: {path.provider}</span>
                   </div>
                 </div>

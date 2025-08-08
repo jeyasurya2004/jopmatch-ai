@@ -1,23 +1,33 @@
-import { groqService } from '../groq';
+import { searchAgent, SearchAgent } from './SearchAgent';
 
 export class JobFetcherAgent {
+  private searchAgent: SearchAgent;
+
+  constructor(searchAgentInstance: SearchAgent) {
+    this.searchAgent = searchAgentInstance;
+  }
+
   async fetchJobs(resumeData: any, jobRole: string): Promise<any> {
     try {
       console.log('JobFetcherAgent: Fetching jobs for role:', jobRole);
-      
-// The profile and prompt are no longer needed as we're using the fetchJobMatches method from groqService
 
-      // Use the fetchJobMatches method from groqService which handles rate limiting
-      const profileSummary = this.createProfileSummary(resumeData, jobRole);
-      const result = await groqService.fetchJobMatches(profileSummary, jobRole, 'remote');
-      console.log('JobFetcherAgent: Raw job suggestions:', result);
+      // Use the SearchAgent to find jobs of type 'job'
+      const searchResults = await this.searchAgent.search(jobRole, 'job');
       
-      const cleanedResponse = this.cleanJsonResponse(result);
-      const parsed = JSON.parse(cleanedResponse);
-      
+      console.log('JobFetcherAgent: Jobs found by SearchAgent:', searchResults);
+
+      // Format the results to match the expected output structure
+      const jobSuggestions = searchResults.map(job => ({
+        title: job.title,
+        company: job.company || 'N/A', // Ensure company is not undefined
+        location: job.location || 'Remote', // Default to remote if not specified
+        description: job.snippet,
+        url: job.url,
+      }));
+
       return {
-        searchQuery: parsed.searchQuery || `${jobRole} entry level`,
-        jobSuggestions: Array.isArray(parsed.jobSuggestions) ? parsed.jobSuggestions : []
+        searchQuery: jobRole,
+        jobSuggestions: jobSuggestions,
       };
       
     } catch (error) {
@@ -26,31 +36,9 @@ export class JobFetcherAgent {
     }
   }
 
-  private createProfileSummary(resumeData: any, jobRole: string): string {
-    const skills = resumeData.skills?.slice(0, 5).join(', ') || 'Various technical skills';
-    const experience = resumeData.experience?.length > 0 ? 
-      `${resumeData.experience.length} work experience(s)` : 'Entry level';
-    const education = resumeData.education?.[0]?.degree || 'Relevant education';
-    
-    return `Looking for ${jobRole} roles. Skilled in ${skills}. ${experience}. ${education}.`;
-  }
-
-  private cleanJsonResponse(response: string): string {
-    let cleaned = response.trim();
-    
-    // Find JSON content
-    const jsonStart = cleaned.indexOf('{');
-    const jsonEnd = cleaned.lastIndexOf('}');
-    
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
-    }
-    
-    // Remove trailing commas
-    cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
-    
-    return cleaned;
-  }
+  // The private methods createProfileSummary and cleanJsonResponse are no longer needed
+  // as we are not interacting with the Groq service for job fetching anymore.
 }
 
-export const jobFetcherAgent = new JobFetcherAgent();
+// Pass the searchAgent instance to the JobFetcherAgent constructor
+export const jobFetcherAgent = new JobFetcherAgent(searchAgent);

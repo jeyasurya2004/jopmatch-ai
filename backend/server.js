@@ -1,82 +1,87 @@
 const express = require('express');
-const axios = require('axios');
-const cors = require('cors'); // To handle CORS requests from your frontend
-const dotenv = require('dotenv'); // To load environment variables from .env file
-const { searchClient } = require('@algolia/client-search'); // Import searchClient from the new package
+const cors = require('cors');
+const dotenv = require('dotenv');
+const algoliasearch = require('algoliasearch');
 
-// Load environment variables from backend/.env
+// Load environment variables at the very beginning
 dotenv.config({ path: './backend/.env' });
 
-const app = express();
-const PORT = process.env.PORT || 3001; // Use environment variable or default to 3001
+const { scrapeAndIndexJobs } = require('./job_scraper');
+const { scrapeAndIndexLearningPaths } = require('./learning_path_scraper');
 
-// Initialize Algolia client
-const algoliaAppId = process.env.ALGOLIA_APP_ID;
-const algoliaApiKey = process.env.ALGOLIA_API_KEY; // Using the search-only key for the server
-const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME || 'jopmatch-ai';
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+const { ALGOLIA_APP_ID, ALGOLIA_API_KEY, ALGOLIA_INDEX_NAME } = process.env;
 
 let client;
+let index;
 
-if (algoliaAppId && algoliaApiKey) {
+if (ALGOLIA_APP_ID && ALGOLIA_API_KEY) {
   try {
-    client = searchClient(algoliaAppId, algoliaApiKey);
-    console.log(`Algolia initialized for app ID: ${algoliaAppId}, and ready to search on index: ${algoliaIndexName}`);
+    client = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_API_KEY); 
+    index = client.initIndex(ALGOLIA_INDEX_NAME || 'jopmatch-ai');
+    console.log(`Algolia initialized and ready to search on index: ${ALGOLIA_INDEX_NAME}`);
   } catch (error) {
     console.error('Error initializing Algolia client:', error);
   }
 } else {
-  console.warn('Algolia API keys are not defined in backend environment variables. Algolia search will be unavailable.');
+  console.warn('Algolia API keys are not defined. Search will be unavailable.');
 }
 
-// Use CORS middleware to allow requests from your frontend's origin
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'; // Default for local dev
-console.log(`CORS allowing requests from: ${frontendUrl}`);
-app.use(cors({
-  origin: frontendUrl,
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
-
-// Middleware to parse JSON bodies
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+app.use(cors({ origin: frontendUrl }));
 app.use(express.json());
 
-// Proxy endpoint for search
+// --- Search Endpoint ---
 app.get('/search-proxy', async (req, res) => {
-  const query = req.query.q; // Get the search query from frontend
-
-  if (!query) {
-    return res.status(400).json({ error: 'Search query (q) is required.' });
-  }
-
-  if (!client) {
-    return res.status(503).json({ error: 'Algolia search is not configured on the backend.' });
-  }
+  const { q: query, type } = req.query;
+  if (!query) return res.status(400).json({ error: 'Search query (q) is required.' });
+  if (!index) return res.status(503).json({ error: 'Search service is unavailable.' });
 
   try {
-    console.log(`Proxying search request to Algolia for query: "${query}" on index "${algoliaIndexName}"`);
-    
-    const { results } = await client.search({
-        requests: [{
-            indexName: algoliaIndexName,
-            query: query
-        }]
-    });
-    
-    const searchResults = results[0].hits.map(hit => ({
-      title: hit.title,
-      url: hit.url,
-      snippet: hit._snippetResult ? hit._snippetResult.content.value : (hit.snippet || ''), 
-    }));
-    
-    res.json({ results: searchResults });
-
+    const searchOptions = { hitsPerPage: 15, filters: type ? `type:${type}` : '' };
+    const algoliaResponse = await index.search(query, searchOptions);
+    res.json({ results: algoliaResponse.hits });
   } catch (error) {
-    console.error('Error during Algolia search:', error);
-    res.status(500).json({ error: 'An unexpected error occurred in the proxy server.' });
+    console.error('Algolia search error:', error);
+    res.status(500).json({ error: 'An error occurred during search.', details: error.message });
+  }
+});
+
+// --- Scraper Trigger Endpoints ---
+app.post('/api/scrape-jobs', async (req, res) => {
+  console.log('Received manual request to scrape jobs.');
+  try {
+    await scrapeAndIndexJobs();
+    res.status(200).json({ message: 'Job scraping process completed.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to complete job scraping.' });
+  }
+});
+
+app.post('/api/scrape-learning', async (req, res) => {
+  console.log('Received manual request to scrape learning paths.');
+  try {
+    await scrapeAndIndexLearningPaths();
+    res.status(200).json({ message: 'Learning path scraping process completed.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to complete learning path scraping.' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend proxy listening on port ${PORT}`);
-  console.log(`Frontend should target http://localhost:${PORT}/search-proxy for search queries.`);
+  console.log(`Backend server listening on port ${PORT}`);
+  console.log(`CORS allowing requests from: ${frontendUrl}`);
+  
+  const SCRAPE_INTERVAL = 3600000; // 1 hour
+
+  const runScrapers = () => {
+    console.log('Running scheduled scrapers...');
+    scrapeAndIndexJobs();
+    scrapeAndIndexLearningPaths();
+  };
+
+  runScrapers(); // Run once on startup
+  setInterval(runScrapers, SCRAPE_INTERVAL);
 });
