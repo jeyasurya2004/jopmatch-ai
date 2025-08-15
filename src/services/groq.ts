@@ -443,25 +443,25 @@ export class GroqService {
   // Model configurations for different agents
   private modelConfigs: Record<AgentType, { model: string; maxTokens: number }> = {
     // Data extraction - uses a fast, efficient model for parsing resumes
-    DATA_AGENT: { model: 'llama-3.1-8b-instant', maxTokens: 2048 },
+    DATA_AGENT: { model: 'llama-3.1-8b-instant', maxTokens: 3048 },
     
     // Skill analysis - uses a high-capability model for detailed analysis
-    SKILL_ANALYZER: { model: 'llama3-70b-8192', maxTokens: 2048 },
+    SKILL_ANALYZER: { model: 'openai/gpt-oss-20b', maxTokens: 4096 },
     
     // Career fit analysis - uses a high-capability model for nuanced analysis
-    CAREER_FIT: { model: 'moonshotai/kimi-k2-instruct', maxTokens: 2048 },
+    CAREER_FIT: { model: 'llama3-70b-8192', maxTokens: 3048 },
     
     // Personality analysis - uses a specialized model for behavioral analysis
-    PERSONALITY: { model: 'meta-llama/llama-4-scout-17b-16e-instruct', maxTokens: 2048 },
+    PERSONALITY: { model: 'gemma2-9b-it', maxTokens: 4096 },
     
     // Recommendation generation - uses a high-capability model for creative suggestions
-    RECOMMENDATION: { model: 'qwen/qwen3-32b', maxTokens: 2048 },
+    RECOMMENDATION: { model: 'meta-llama/llama-4-scout-17b-16e-instruct', maxTokens: 4096 },
     
     // Job fetching - uses a specialized model for search and matching
-    JOB_FETCHER: { model: 'gemma2-9b-it', maxTokens: 2048 },
+    JOB_FETCHER: { model: 'gemma2-9b-it', maxTokens: 4096 },
     
     // Feedback generation - uses a high-capability model for comprehensive feedback
-    FEEDBACK: { model: 'meta-llama/llama-4-scout-17b-16e-instruct', maxTokens: 2048 },
+    FEEDBACK: { model: 'meta-llama/llama-4-scout-17b-16e-instruct', maxTokens: 4096 },
   };
 
   // Helper method to get the appropriate API key and model for an agent
@@ -632,7 +632,7 @@ Resume text: ${truncatedContent}`;
         model,
         messages,
         0.3, // Lower temperature for more consistent results
-        4096, // Max tokens
+        3048, // Max tokens
         true // Require JSON response
       );
 
@@ -687,7 +687,7 @@ IMPORTANT:
         model,
         messages,
         0.3,
-        4096,
+        3048,
         true
       );
 
@@ -825,7 +825,7 @@ IMPORTANT:
         model,
         messages,
         0.3,
-        4096,
+        3048,
         true
       );
 
@@ -847,131 +847,99 @@ IMPORTANT:
     }
   }
 
+  
   async analyzePersonality(resumeData: string): Promise<string> {
     try {
-      // Parse the resume data if it's a string
-      const parsedResumeData = typeof resumeData === 'string' ? JSON.parse(resumeData) : resumeData;
-      
-      // Extract relevant information for personality analysis
-      const profileInfo = {
-        summary: parsedResumeData.summary || '',
-        experience: parsedResumeData.experience || [],
-        skills: parsedResumeData.skills || [],
-        education: parsedResumeData.education || [],
-        projects: parsedResumeData.projects || []
-      };
-
-      // Create a prompt for personality analysis
-      const prompt = `Analyze the following resume information and provide a personality assessment.
-      Focus on work style, communication preferences, and potential cultural fit.
-      
-      Resume Summary: ${profileInfo.summary}
-      
-      Experience: ${JSON.stringify(profileInfo.experience, null, 2)}
-      
-      Skills: ${profileInfo.skills.join(', ')}
-      
-      Education: ${JSON.stringify(profileInfo.education, null, 2)}
-      
-      Projects: ${JSON.stringify(profileInfo.projects, null, 2)}
-      
-      Return the analysis as a JSON object with the following structure:
-      {
-        "traits": ["trait1", "trait2", "trait3"],
-        "workStyle": "description of work style",
-        "communicationStyle": "description of communication style",
-        "strengths": ["strength1", "strength2"],
-        "potentialChallenges": ["challenge1", "challenge2"]
-      }
-      
-      IMPORTANT: 
-      - Only include the JSON object in your response
-      - Do not include any text before or after the JSON object
-      - Ensure all strings are properly escaped
-      - Ensure the JSON is properly formatted with no trailing commas or syntax errors
-      - Do not include any markdown formatting or code block markers`;
-
-      // Get the API key and model for the personality agent
       const { apiKey, model } = this.getAgentConfig('PERSONALITY');
       
-      // Prepare messages for the API request
-      const messages: GroqMessage[] = [
-        { role: 'system', content: 'You are an expert in personality analysis and career counseling.' },
-        { role: 'user', content: prompt }
-      ];
-      
-      // Use the Groq API to analyze personality
-      const completion = await this.makeRequest(
-        apiKey,
-        model,
-        messages,
-        0.7, // temperature
-        2048, // maxTokens
-        true, // require JSON response
-        3, // maxRetries
-        1000 // initialDelay
-      );
+      const prompt = `
+      You are an expert HR analyst and psychologist. Your task is to infer a "Big Five" personality profile from a candidate's resume data.
 
-      // Parse the response
-      const personalityAnalysis = typeof completion === 'string' ? JSON.parse(completion) : completion;
-      
-      // Return the analysis as a JSON string
-      return JSON.stringify({
-        ...personalityAnalysis,
-        timestamp: new Date().toISOString(),
-        source: 'Groq Personality Analysis'
-      });
-      
+      **Candidate's Resume Data (JSON):**
+      ${resumeData}
+
+      **CRITICAL INSTRUCTIONS:**
+      1.  **Analyze the Resume:** Infer the candidate's personality traits from their experience, project descriptions, and self-summary.
+      2.  **Provide Scores:** For each of the five personality traits (openness, conscientiousness, extraversion, agreeableness, neuroticism), provide a numerical score between 0.0 and 1.0.
+      3.  **Write a Summary:** You MUST write a concise, 2-3 sentence analysis of the candidate's likely work style in the "summary" field.
+      4.  **Fill ALL Fields:** Do not leave any fields empty. All six fields in the JSON response are mandatory.
+      5.  **Strict JSON Only:** Your entire response must be a single, valid JSON object and nothing else.
+
+      **Required JSON Output Structure:**
+      {
+        "openness": 0.0,
+        "conscientiousness": 0.0,
+        "extraversion": 0.0,
+        "agreeableness": 0.0,
+        "neuroticism": 0.0,
+        "summary": "A 2-3 sentence summary of the candidate's work style based on the analysis."
+      }
+      `;
+
+      const messages: GroqMessage[] = [
+        { 
+          role: 'system', 
+          content: 'You are an expert HR analyst who provides personality profiles in a strict JSON format. You must provide scores for all five traits and include a summary.'
+        },
+        { 
+          role: 'user', 
+          content: prompt
+        }
+      ];
+
+      const response = await this.makeRequest(apiKey, model, messages, 0.4, 2048, true);
+      return response;
+
     } catch (error) {
       console.error('Error in analyzePersonality:', error);
-      
-      // Return a default response in case of error
+      // Return a structured error response
       return JSON.stringify({
-        traits: ['Analytical', 'Detail-oriented', 'Results-driven'],
-        workStyle: 'Structured and methodical approach to tasks',
-        communicationStyle: 'Clear and concise communication style',
-        strengths: ['Problem-solving', 'Analytical thinking'],
-        potentialChallenges: ['May need to adapt to highly collaborative environments'],
-        timestamp: new Date().toISOString(),
-        error: error instanceof Error ? error.message : 'Unknown error',
-        source: 'Groq Personality Analysis (Fallback)'
+        openness: 0,
+        conscientiousness: 0,
+        extraversion: 0,
+        agreeableness: 0,
+        neuroticism: 0,
+        summary: "Could not generate personality profile at this time due to an AI service error."
       });
     }
   }
 
-  async generateRecommendations(resumeData: string, targetRole: string, skillGaps: string): Promise<string> {
+
+  async generateRecommendations(resumeData: string, targetRole: string, skillGaps: string, searchContext: string): Promise<string> {
     try {
       const { apiKey, model } = this.getAgentConfig('RECOMMENDATION');
       
       const prompt = `
-      You are a Learning Path Advisor. Your goal is to suggest a relevant and structured learning path for a candidate targeting a specific job role, based on their skill gaps. You must focus on suggesting topics and skills, not on finding web links.
+      You are an expert Learning Path Advisor. Your task is to analyze a list of raw search results and create a structured, high-quality learning plan.
 
       **Input Data:**
-      1.  **Target Role:** ${targetRole}
+      1.  **Candidate's Target Role:** ${targetRole}
       2.  **Identified Skill Gaps:** ${skillGaps}
-      3.  **Candidate's Resume Summary:**
+      3.  **Candidate's Resume Data (JSON):**
           ${resumeData}
+      4.  **Raw Learning Resource Search Results (includes articles, tutorials, and YouTube videos):**
+          ---
+          ${searchContext}
+          ---
 
-      **Instructions:**
-      1.  For each skill gap, suggest a clear, actionable learning step.
-      2.  For each step, provide a concise title and a one-sentence description.
-      3.  Suggest a reputable provider or platform (e.g., Coursera, freeCodeCamp, official documentation) where the user might find such a resource.
-      4.  Return a single, valid JSON object. Do NOT include any web links or URLs.
+      **CRITICAL INSTRUCTIONS:**
+      1.  **Analyze and Select:** From the search results, select the **top 5-7 most relevant and high-quality** learning resources that address the skill gaps, keeping the candidate's resume in mind.
+      2.  **Ensure Variety:** Include a good mix of content types (e.g., official documentation, in-depth articles, and YouTube tutorials).
+      3.  **Fill ALL Fields:** For every single learning path suggestion, you MUST provide a value for all fields: "title", "skillCovered", "description", "provider", and "link". Do not leave any field empty.
+      4.  **Be Specific:** For the "provider", name the specific website or YouTube channel (e.g., "freeCodeCamp", "Traversy Media", "Official React Docs").
+      5.  **Strict JSON Only:** Your entire response must be a single, valid JSON object and nothing else.
+      
+      **CRITICAL REMINDER:** The final output MUST start with \`{"learningPathSuggestions": [\` and be a single, complete JSON object.
 
       **Required JSON Output Structure:**
       {
         "learningPathSuggestions": [
           {
-            "title": "Mastering React Hooks",
-            "skillCovered": "React",
-            "description": "A course focusing on advanced state management with React Hooks.",
-            "provider": "freeCodeCamp"
-          },
-          {
-            "title": "TypeScript for Professionals",
-            "skillCovered": "TypeScript",
-            "description": "Learn static typing and advanced TypeScript features for robust applications.",
-            "provider": "Official TypeScript Docs"
+            "title": "Example Title",
+            "skillCovered": "Example Skill",
+            "description": "Example description.",
+            "provider": "Example Provider",
+            "link": "https://example.com"
           }
         ],
         "summary": "A concise, encouraging summary of the recommended learning plan."
@@ -981,7 +949,7 @@ IMPORTANT:
       const messages: GroqMessage[] = [
         { 
           role: 'system', 
-          content: 'You are an expert career counselor. You suggest topics for learning paths but do not provide URLs.'
+          content: 'You are an expert career counselor who creates structured learning paths from search results. You must return a single, valid JSON object with all fields completed for every item.'
         },
         { 
           role: 'user', 
@@ -989,17 +957,19 @@ IMPORTANT:
         }
       ];
 
-      const response = await this.makeRequest(apiKey, model, messages, 0.6, 4096, true, 3, 1000);
+      const response = await this.makeRequest(apiKey, model, messages, 0.6, 4048, true, 3, 1000);
       return response;
 
     } catch (error) {
-      console.error('Error generating recommendation suggestions:', error);
+      console.error('Error generating recommendation suggestions with LLM:', error);
       return JSON.stringify({
         learningPathSuggestions: [],
-        summary: "Could not generate learning recommendations at this time due to an error."
+        summary: "Could not generate learning recommendations at this time due to an AI service error."
       });
     }
   }
+
+
 
 
   async generateFeedback(resumeData: string, allResults: any): Promise<string> {
@@ -1109,39 +1079,45 @@ IMPORTANT:
   }
 
 
-  async fetchJobMatches(resumeData: string, targetRole: string, location: string = 'remote'): Promise<string> {
+  async fetchJobMatches(resumeData: string, targetRole: string, searchContext: string): Promise<string> {
     try {
       const messages: GroqMessage[] = [
         {
           role: 'system',
-          content: `You are a helpful assistant that finds job matches based on resume data and target roles.`
+          content: `You are an expert career advisor. Your task is to analyze a list of raw job search results and select the top 5-7 most relevant jobs for a candidate based on their resume. You must return a single, valid JSON object with all fields completed.`
         },
         {
           role: 'user',
-          content: `Find job matches for a candidate with the following resume data: ${resumeData}. Target role: ${targetRole}. Location: ${location}
-          
-          Please provide job matches in the following JSON format:
+          content: `
+          **Candidate's Target Role:** ${targetRole}
+
+          **Candidate's Resume Data (JSON):**
+          ${resumeData}
+
+          **Raw Job Search Results to Analyze:**
+          ---
+          ${searchContext}
+          ---
+
+          **CRITICAL INSTRUCTIONS:**
+          1.  **Analyze and Select:** From the search results, select the **top 5-7 most relevant** job listings.
+          2.  **Fill ALL Fields:** For every single job suggestion, you MUST provide a value for all fields: "title", "company", "location", "description", and "url". Do not leave any field empty. If a piece of information isn't in the snippet, make a reasonable inference (e.g., if location is missing, use "Remote").
+          3.  **Be Specific:** For the "company" and "location", extract the correct names from the search results.
+          4.  **Strict JSON Only:** Your entire response must be a single, valid JSON object and nothing else.
+
+          **Required JSON Output Structure:**
           {
             "jobs": [
               {
-                "title": "Job Title",
-                "company": "Company Name",
-                "location": "Location",
-                "description": "Job Description",
-                "requirements": ["requirement1", "requirement2"],
-                "matchScore": 0-100,
-                "salaryRange": "$XK - $YK",
-                "applicationLink": "URL"
+                "title": "Extracted Job Title",
+                "company": "Extracted Company Name",
+                "location": "Extracted Location (or 'Remote')",
+                "description": "A brief, compelling summary of the job based on the provided snippet.",
+                "url": "The original URL from the search result"
               }
             ]
           }
-          
-          IMPORTANT: 
-          - Only include the JSON object in your response
-          - Do not include any text before or after the JSON object
-          - Ensure all strings are properly escaped
-          - Ensure the JSON is properly formatted with no trailing commas or syntax errors
-          - Do not include any markdown formatting or code block markers`
+          `
         }
       ];
 
@@ -1152,17 +1128,27 @@ IMPORTANT:
         apiKey,
         model,
         messages,
-        0.7,
-        2048,
+        0.5, // Lower temperature for more focused extraction
+        4096,
         true
       );
 
       return response;
     } catch (error) {
-      console.error('Error fetching job matches:', error);
-      throw error;
+      console.error('Error processing job matches with LLM:', error);
+      // Provide a structured error response
+      return JSON.stringify({
+        jobs: [{
+          title: 'Error Processing Job Suggestions',
+          company: 'AI System',
+          location: 'N/A',
+          description: error instanceof Error ? error.message : 'An unknown error occurred.',
+          url: '#'
+        }]
+      });
     }
   }
+
 
   // Analyzes skill gaps for a job role
   async analyzeSkillGaps(userSkills: string[], jobRole: string, requiredSkills: string[]): Promise<string> {
@@ -1235,7 +1221,7 @@ IMPORTANT:
         model,
         messages,
         0.3,
-        2048,
+        4048,
         true
       );
 

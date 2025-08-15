@@ -67,7 +67,6 @@ export interface PersonalityProfile {
   summary: string;
 }
 
-// Updated LearningPath interface to reflect the new data structure
 export interface LearningPath {
   title: string;
   skillCovered: string;
@@ -76,17 +75,16 @@ export interface LearningPath {
   provider: string;
 }
 
-// The Course interface is no longer needed with the flattened structure.
-
 export interface JobSuggestion {
-  id: string;
+  id?: string; // Made optional
   title: string;
   company: string;
   location: string;
-  salary: string;
-  matchScore: number;
+  salary?: string; // Made optional
+  matchScore?: number; // Made optional
   description: string;
-  requiredSkills: string[];
+  requiredSkills?: string[]; // Made optional
+  url: string; // Added url property
 }
 
 export interface FeedbackResult {

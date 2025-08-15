@@ -1,44 +1,73 @@
-import { searchAgent, SearchAgent } from './SearchAgent';
+import axios from 'axios';
+import { groqService } from '../groq'; // Import the groqService
+import { JobSuggestion } from '../../types';
+
+// --- Configuration for Google Custom Search API from .env file ---
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+const SEARCH_ENGINE_ID = import.meta.env.VITE_SEARCH_ENGINE_ID;
+const GOOGLE_API_URL = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}`;
+
+interface JobFetcherResult {
+  searchQuery: string;
+  jobSuggestions: JobSuggestion[];
+}
 
 export class JobFetcherAgent {
-  private searchAgent: SearchAgent;
+  async fetchJobs(resumeData: any, jobRole: string): Promise<JobFetcherResult> {
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+      console.error('JobFetcherAgent: Google API Key or Search Engine ID not configured.');
+      return { searchQuery: jobRole, jobSuggestions: [] };
+    }
 
-  constructor(searchAgentInstance: SearchAgent) {
-    this.searchAgent = searchAgentInstance;
-  }
-
-  async fetchJobs(resumeData: any, jobRole: string): Promise<any> {
     try {
-      console.log('JobFetcherAgent: Fetching jobs for role:', jobRole);
+      // --- Step 1: Get raw job listings from Google Search ---
+      console.log('JobFetcherAgent: Fetching raw job listings from Google for:', jobRole);
+      const searchQuery = `job openings for ${jobRole} on LinkedIn or Indeed`;
+      const searchResponse = await axios.get(`${GOOGLE_API_URL}&q=${encodeURIComponent(searchQuery)}`);
+      const searchResults = searchResponse.data.items || [];
 
-      // Use the SearchAgent to find jobs of type 'job'
-      const searchResults = await this.searchAgent.search(jobRole, 'job');
+      if (searchResults.length === 0) {
+        return { searchQuery: jobRole, jobSuggestions: [] };
+      }
       
-      console.log('JobFetcherAgent: Jobs found by SearchAgent:', searchResults);
+      // Format the search results as a string context for the LLM
+      const searchContext = searchResults.map((item: any) => 
+        `Title: ${item.title}\nLink: ${item.link}\nSnippet: ${item.snippet}`
+      ).join('\n---\n');
 
-      // Format the results to match the expected output structure
-      const jobSuggestions = searchResults.map(job => ({
-        title: job.title,
-        company: job.company || 'N/A', // Ensure company is not undefined
-        location: job.location || 'Remote', // Default to remote if not specified
-        description: job.snippet,
-        url: job.url,
-      }));
+      // --- Step 2: Send search results to the LLM for processing ---
+      console.log('JobFetcherAgent: Sending search results to LLM for analysis.');
+      const llmResponse = await groqService.fetchJobMatches(
+        JSON.stringify(resumeData), 
+        jobRole, 
+        searchContext // Pass the search results as context
+      );
+      
+      // *** DEBUGGING: Log the raw response from the LLM ***
+      console.log('JobFetcherAgent: Raw LLM Response:', llmResponse);
+            
+      const parsedLlmResponse = JSON.parse(llmResponse);
 
       return {
         searchQuery: jobRole,
-        jobSuggestions: jobSuggestions,
+        jobSuggestions: parsedLlmResponse.jobs || [],
       };
       
-    } catch (error) {
-      console.error('JobFetcherAgent: Error fetching jobs:', error);
-      throw error;
+    } catch (error: any) {
+      console.error('JobFetcherAgent: Error in the job fetching process:', error);
+      const errorMessage = error.message || 'An unexpected error occurred while fetching jobs.';
+      return {
+        searchQuery: jobRole,
+        jobSuggestions: [{
+          title: 'Error Processing Job Suggestions',
+          company: 'System',
+          location: 'N/A',
+          description: errorMessage,
+          url: '#'
+        }],
+      };
     }
   }
-
-  // The private methods createProfileSummary and cleanJsonResponse are no longer needed
-  // as we are not interacting with the Groq service for job fetching anymore.
 }
 
-// Pass the searchAgent instance to the JobFetcherAgent constructor
-export const jobFetcherAgent = new JobFetcherAgent(searchAgent);
+export const jobFetcherAgent = new JobFetcherAgent();

@@ -3,16 +3,14 @@ import { motion } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-// **FIXED HERE**: Removed unused icons
 import { Download, RefreshCw, Brain, MessageSquare } from 'lucide-react';
 import { FitScoreCard } from './FitScoreCard';
 import { SkillGapView } from './SkillGapView';
 import { PersonalityChart } from './PersonalityChart';
 import { LearningPathList } from './LearningPathList';
 import { JobSuggestionList } from './JobSuggestionList';
-import { ResumeData, JobRole, RoleFitResult, SkillGap, PersonalityProfile, LearningPath } from '../types';
+import { ResumeData, JobRole, RoleFitResult, SkillGap, PersonalityProfile, LearningPath, JobSuggestion } from '../types';
 
-// Import all agents
 import { skillAnalyzerAgent } from '../services/agents/SkillAnalyzerAgent';
 import { careerFitAgent } from '../services/agents/CareerFitAgent';
 import { personalityAgent } from '../services/agents/PersonalityAgent';
@@ -43,7 +41,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
   const [roleFitResult, setRoleFitResult] = useState<RoleFitResult | null>(null);
   const [personalityProfile, setPersonalityProfile] = useState<PersonalityProfile | null>(null);
   const [learningPaths, setLearningPaths] = useState<LearningPath[]>([]);
-  const [jobSuggestions, setJobSuggestions] = useState<any[]>([]);
+  const [jobSuggestions, setJobSuggestions] = useState<JobSuggestion[]>([]);
   const [finalFeedback, setFinalFeedback] = useState<any>(null);
   const [skillGaps, setSkillGaps] = useState<SkillGap[]>([]);
 
@@ -71,10 +69,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
       setCurrentStep(4);
 
       const personalityResult = await personalityAgent.analyzePersonality(resumeData);
-      setPersonalityProfile({
-        openness: personalityResult.openness || 0.5, conscientiousness: personalityResult.conscientiousness || 0.5, extraversion: personalityResult.extraversion || 0.5, agreeableness: personalityResult.agreeableness || 0.5, neuroticism: personalityResult.neuroticism || 0.5, summary: personalityResult.summary || 'Personality analysis based on resume content'
-      });
+      setPersonalityProfile(personalityResult);
       setCurrentStep(5);
+
 
       const missingSkills = processedGaps.slice(0, 5).map(gap => gap.skill);
       const recommendationResult = await recommendationAgent.generateRecommendations(resumeData, selectedRole.title, missingSkills);
@@ -148,8 +145,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
   return (
     <motion.div 
       className="max-w-7xl mx-auto space-y-8"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       <div className="text-center">
@@ -157,7 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
           className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
         >
           AI Analysis Complete for {resumeData.name}
         </motion.h2>
@@ -165,7 +162,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
           className="text-lg text-gray-600 dark:text-gray-400"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
         >
           Comprehensive insights for {selectedRole.title} role
         </motion.p>
@@ -175,7 +172,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
       >
         <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
           <CardContent className="p-4 text-center">
@@ -206,7 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
+        transition={{ delay: 0.6, duration: 0.5 }}
       >
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
@@ -226,7 +223,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
           <TabsContent value="skills" className="space-y-6"><SkillGapView skillGaps={skillGaps} /></TabsContent>
           <TabsContent value="personality" className="space-y-6">{personalityProfile && <PersonalityChart profile={personalityProfile} />}</TabsContent>
           <TabsContent value="learning" className="space-y-6"><LearningPathList learningPaths={learningPaths} /></TabsContent>
-          <TabsContent value="jobs" className="space-y-6"><JobSuggestionList skills={resumeData.skills} targetRole={selectedRole.title} /></TabsContent>
+          <TabsContent value="jobs" className="space-y-6">
+            <JobSuggestionList jobSuggestions={jobSuggestions} />
+          </TabsContent>
           <TabsContent value="feedback" className="space-y-6">
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
               <CardHeader>
@@ -318,7 +317,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
         className="flex flex-col sm:flex-row justify-center gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
+        transition={{ delay: 0.8, duration: 0.5 }} // Staggered delay
       >
         <Button onClick={runAgentPipeline} className="flex items-center gap-2"><RefreshCw className="w-4 h-4" />Re-analyze</Button>
         <Button variant="outline" className="flex items-center gap-2"><Download className="w-4 h-4" />Download Report</Button>

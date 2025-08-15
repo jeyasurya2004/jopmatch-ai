@@ -1,9 +1,11 @@
-import { groqService } from '../groq';
-import { searchAgent } from './SearchAgent';
+import axios from 'axios';
+import { groqService } from '../groq'; // Import the groqService
 import { LearningPath } from '../../types';
 
-// Helper function to introduce a delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// --- Configuration for Google Custom Search API from .env file ---
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
+const SEARCH_ENGINE_ID = import.meta.env.VITE_SEARCH_ENGINE_ID;
+const GOOGLE_API_URL = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}`;
 
 interface RecommendationResult {
   learningPaths: LearningPath[];
@@ -12,71 +14,55 @@ interface RecommendationResult {
 
 export class RecommendationAgent {
   async generateRecommendations(resumeData: any, jobRole: string, missingSkills: string[]): Promise<RecommendationResult> {
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+      console.error('RecommendationAgent: Google API Key or Search Engine ID not configured.');
+      return { learningPaths: [], summary: 'API not configured.' };
+    }
+
     try {
-      console.log('RecommendationAgent: Generating recommendation ideas for:', jobRole);
-      
-      const resumeSummary = resumeData.summary || JSON.stringify(resumeData);
-      const skillGaps = missingSkills.join(", ");
+      // --- Step 1: Get raw learning resources from Google Search (including YouTube) ---
+      console.log('RecommendationAgent: Fetching raw learning resources from Google for:', jobRole);
+      const searchQuery = `(youtube.com OR freecodecamp.org OR udemy.com) learning paths or tutorials for ${jobRole} focusing on ${missingSkills.join(" OR ")}`;
+      const searchResponse = await axios.get(`${GOOGLE_API_URL}&q=${encodeURIComponent(searchQuery)}`);
+      const searchResults = searchResponse.data.items || [];
 
-      // Step 1: Get learning path suggestions from the LLM (without links)
-      const suggestionsResult = await groqService.generateRecommendations(resumeSummary, jobRole, skillGaps);
-      
-      let suggestions: any;
-      try {
-          suggestions = JSON.parse(suggestionsResult);
-      } catch (e) {
-          console.error('RecommendationAgent: Failed to parse suggestions JSON.', e);
-          return { learningPaths: [], summary: "Could not generate a learning path." };
+      if (searchResults.length === 0) {
+        return { learningPaths: [], summary: 'Could not find any relevant learning resources.' };
       }
 
-      const learningPathSuggestions = suggestions.learningPathSuggestions || [];
-      const summary = suggestions.summary || 'Here is a tailored learning path to help you bridge your skill gaps.';
-      
-      // Step 2: Use the SearchAgent to find real links for each suggestion
-      const enrichedLearningPaths: LearningPath[] = [];
+      // Format the search results as a string context for the LLM
+      const searchContext = searchResults.map((item: any) => 
+        `Title: ${item.title}\nLink: ${item.link}\nSnippet: ${item.snippet}`
+      ).join('\n---\n');
 
-      for (const suggestion of learningPathSuggestions) {
-        // Use only the skillCovered as the query for simplicity
-        const query = `${suggestion.skillCovered}`;
-        
-        // Pass 'course' as the type to narrow down search results to learning resources
-        const searchResults = await searchAgent.search(query, 1, 'course'); // Get the top 1 result of type 'course'
+      // --- Step 2: Send search results to the LLM for processing ---
+      console.log('RecommendationAgent: Sending learning resources to LLM for analysis.');
+      const llmResponse = await groqService.generateRecommendations(
+        JSON.stringify(resumeData),
+        jobRole,
+        missingSkills.join(', '),
+        searchContext // Pass the search results as context
+      );
 
-        if (searchResults.length > 0 && searchResults[0].url) {
-          const topResult = searchResults[0];
-          enrichedLearningPaths.push({
-            title: suggestion.title,
-            skillCovered: suggestion.skillCovered,
-            description: suggestion.description,
-            link: topResult.url,
-            provider: suggestion.provider,
-          });
-        } else {
-          enrichedLearningPaths.push({
-            title: suggestion.title,
-            skillCovered: suggestion.skillCovered,
-            description: suggestion.description,
-            link: '', // Explicitly empty link if no valid search result or URL
-            provider: suggestion.provider,
-          });
-        }
+      const parsedLlmResponse = JSON.parse(llmResponse);
 
-        // Introduce a small delay between search requests
-        await delay(300); // Wait for 300 milliseconds between searches
-      }
-
-      console.log('RecommendationAgent: Enriched learning paths with real links:', enrichedLearningPaths);
-      
       return {
-        learningPaths: enrichedLearningPaths,
-        summary: summary,
+        learningPaths: parsedLlmResponse.learningPathSuggestions || [],
+        summary: parsedLlmResponse.summary || 'Here are your personalized learning recommendations.',
       };
-      
-    } catch (error) {
-      console.error('RecommendationAgent: Error generating recommendations:', error);
+
+    } catch (error: any) {
+      console.error('RecommendationAgent: Error in the recommendation generation process:', error);
+      const errorMessage = error.message || 'An unexpected error occurred while generating recommendations.';
       return {
-        learningPaths: [],
-        summary: 'An unexpected error occurred while generating your learning path.',
+        learningPaths: [{
+          title: 'Error Generating Recommendations',
+          skillCovered: 'Error',
+          description: errorMessage,
+          provider: 'System',
+          link: '#'
+        }],
+        summary: 'Failed to generate recommendations.',
       };
     }
   }

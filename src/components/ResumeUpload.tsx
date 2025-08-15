@@ -4,6 +4,7 @@ import { Upload, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { agentOrchestrator } from '../services/AgentOrchestrator';
 import { ResumeData } from '../types';
+import mammoth from 'mammoth'; // Import the new, secure DOCX parser
 
 interface ResumeUploadProps {
   onResumeProcessed: (data: ResumeData) => void;
@@ -29,7 +30,6 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
@@ -43,7 +43,10 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
   }, []);
 
   const handleFile = async (file: File) => {
-    if (!file.type.includes('pdf') && !file.type.includes('image') && !file.type.includes('text')) {
+    // Updated file type check to include docx
+    const allowedTypes = ['application/pdf', 'image/', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.some(type => file.type.startsWith(type))) {
+      console.error('Unsupported file type:', file.type);
       setUploadStatus('error');
       return;
     }
@@ -53,33 +56,35 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
     setUploadStatus('idle');
 
     try {
-      // Read file content
-      const fileContent = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = () => reject(new Error('Failed to read file'));
-        
-        if (file.type.includes('image') || file.type === 'application/pdf') {
-          // For images and PDFs, read as data URL
-          reader.readAsDataURL(file);
-        } else {
-          // For text files, read as text
-          reader.readAsText(file);
-        }
-      });
+      let fileContent: string;
+      let fileTypeForAgent = file.type;
 
-      // Process the resume through all agents
-      const results = await agentOrchestrator.processResume(
-        fileContent,
-        file.type
-      );
+      if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // Handle .docx files securely with mammoth
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        fileContent = result.value;
+        fileTypeForAgent = 'text/plain'; // Treat the extracted text as plain text for the agent
+      } else {
+        // Handle other file types as before
+        fileContent = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          if (file.type.includes('image') || file.type === 'application/pdf') {
+            reader.readAsDataURL(file);
+          } else {
+            reader.readAsText(file);
+          }
+        });
+      }
 
-      // Pass the extracted resume data to the parent component
+      const results = await agentOrchestrator.processResume(fileContent, fileTypeForAgent);
+
       onResumeProcessed(results.resumeData);
       setUploadStatus('success');
-      
-      // Log the complete results for debugging
       console.log('Agent processing complete:', results);
+
     } catch (error) {
       console.error('Error processing resume:', error);
       setUploadStatus('error');
@@ -101,7 +106,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
           Upload Your Resume
         </CardTitle>
         <CardDescription>
-          Upload your resume in PDF, image, or text format. Our AI will extract and analyze your information.
+          Upload your resume in PDF, DOCX, image, or text format. Our AI will analyze your information.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -118,7 +123,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
         >
           <input
             type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.txt,.doc,.docx"
+            accept=".pdf,.jpg,.jpeg,.png,.txt,.docx" // Updated accept attribute
             onChange={handleChange}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             disabled={uploading}
@@ -136,7 +141,6 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
                 >
                   <Upload className="w-12 h-12 text-blue-500 mx-auto animate-bounce" />
                   <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Processing Resume...</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Extracting your information using AI</p>
                 </motion.div>
               ) : uploadStatus === 'success' ? (
                 <motion.div
@@ -147,7 +151,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
                   className="text-green-600"
                 >
                   <CheckCircle className="w-12 h-12 mx-auto" />
-                  <p className="text-lg font-medium">Resume Processed Successfully!</p>
+                  <p className="text-lg font-medium">Resume Processed!</p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{fileName}</p>
                 </motion.div>
               ) : uploadStatus === 'error' ? (
@@ -160,7 +164,7 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
                 >
                   <AlertCircle className="w-12 h-12 mx-auto" />
                   <p className="text-lg font-medium">Upload Failed</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Please try again with a valid file format</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Please try a valid file format.</p>
                 </motion.div>
               ) : (
                 <motion.div
@@ -170,42 +174,17 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
                   exit={{ opacity: 0, scale: 0.8 }}
                 >
                   <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                  <div>
-                    <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                      Drag and drop your resume here
-                    </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      or click to browse files
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2 justify-center text-xs text-gray-500 dark:text-gray-400">
-                    <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">PDF</span>
-                    <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">JPG</span>
-                    <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">PNG</span>
-                    <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">TXT</span>
-                    <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">DOC</span>
-                  </div>
+                  <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
+                    Drag and drop your resume here
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    or click to browse files
+                  </p>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
-
-        {uploadStatus === 'success' && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
-          >
-            <div className="flex items-center gap-2 text-green-800">
-              <CheckCircle className="w-5 h-5" />
-              <span className="font-medium">Ready for Analysis</span>
-            </div>
-            <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-              Your resume has been processed and is ready for job matching analysis.
-            </p>
-          </motion.div>
-        )}
       </CardContent>
     </Card>
     </motion.div>
