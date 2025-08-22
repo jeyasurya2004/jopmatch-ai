@@ -5,7 +5,6 @@ export class PersonalityAgent {
     try {
       console.log('PersonalityAgent: Analyzing personality from resume data');
       
-      // Use groqService to make the API call with rate limiting
       const personalityAnalysisResult = await groqService.analyzePersonality(JSON.stringify(resumeData));
       
       const result = personalityAnalysisResult;
@@ -14,13 +13,14 @@ export class PersonalityAgent {
       const cleanedResponse = this.cleanJsonResponse(result);
       const parsed = JSON.parse(cleanedResponse);
       
+      // FIX: Changed from parsed.bigFive?.<trait> to parsed.<trait> to match the flat JSON structure from the API
       return {
         mbtiType: parsed.mbtiType || 'XXXX',
-        openness: parsed.bigFive?.openness || 0.5,
-        conscientiousness: parsed.bigFive?.conscientiousness || 0.5,
-        extraversion: parsed.bigFive?.extraversion || 0.5,
-        agreeableness: parsed.bigFive?.agreeableness || 0.5,
-        neuroticism: parsed.bigFive?.neuroticism || 0.5,
+        openness: parsed.openness || 0.5,
+        conscientiousness: parsed.conscientiousness || 0.5,
+        extraversion: parsed.extraversion || 0.5,
+        agreeableness: parsed.agreeableness || 0.5,
+        neuroticism: parsed.neuroticism || 0.5,
         softSkills: Array.isArray(parsed.softSkills) ? parsed.softSkills : [],
         workStyle: parsed.workStyle || 'Collaborative and detail-oriented',
         summary: parsed.summary || 'Personality analysis based on resume content'
@@ -32,11 +32,9 @@ export class PersonalityAgent {
     }
   }
 
-
   private cleanJsonResponse(response: string): string {
     let cleaned = response.trim();
     
-    // Find JSON content
     const jsonStart = cleaned.indexOf('{');
     const jsonEnd = cleaned.lastIndexOf('}');
     
@@ -44,7 +42,6 @@ export class PersonalityAgent {
       cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
     }
     
-    // Remove trailing commas
     cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
     
     return cleaned;

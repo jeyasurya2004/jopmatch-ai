@@ -1,7 +1,9 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Target, TrendingDown } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Progress } from './ui/progress';
+import { Target } from 'lucide-react';
 import { SkillGap } from '../types';
 
 interface SkillGapViewProps {
@@ -10,106 +12,90 @@ interface SkillGapViewProps {
 
 export const SkillGapView: React.FC<SkillGapViewProps> = ({ skillGaps }) => {
   const chartData = skillGaps.map(gap => ({
-    skill: gap.skill.length > 15 ? gap.skill.substring(0, 15) + '...' : gap.skill,
-    fullSkill: gap.skill,
+    name: gap.skill,
     current: gap.currentLevel,
     required: gap.requiredLevel,
     gap: gap.gap
   }));
 
+  const getPriorityColor = (priority: 'Low' | 'Medium' | 'High') => {
+    switch (priority) {
+      case 'High': return 'text-red-500';
+      case 'Medium': return 'text-yellow-500';
+      case 'Low': return 'text-green-500';
+      default: return 'text-muted-foreground';
+    }
+  };
+  
   const getGapColor = (gap: number) => {
-    if (gap >= 60) return '#ef4444'; // red
-    if (gap >= 40) return '#f97316'; // orange
-    if (gap >= 20) return '#eab308'; // yellow
-    return '#22c55e'; // green
+    if (gap > 50) return '#ef4444'; // red-500
+    if (gap > 20) return '#f59e0b'; // amber-500
+    return '#22c55e'; // green-500
   };
 
   return (
-    <Card className="w-full">
+    <Card className="bg-card text-card-foreground border-border shadow-lg h-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Target className="w-6 h-6 text-red-500" />
+          <Target className="w-6 h-6 text-primary" />
           Skill Gap Analysis
         </CardTitle>
         <CardDescription>
           Comparison between your current skills and role requirements
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        {skillGaps.length === 0 ? (
-          <div className="text-center py-8">
-            <TrendingDown className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No significant skill gaps detected!</p>
-            <p className="text-sm text-gray-400 mt-1">You're well-matched for this role</p>
-          </div>
-        ) : (
-          <>
-            {/* Chart */}
-            <div className="h-64 mb-6">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="skill" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    fontSize={12}
-                  />
-                  <YAxis />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      `${value}%`,
-                      name === 'current' ? 'Current Level' : 
-                      name === 'required' ? 'Required Level' : 'Gap'
-                    ]}
-                    labelFormatter={(label) => {
-                      const item = chartData.find(d => d.skill === label);
-                      return item?.fullSkill || label;
-                    }}
-                  />
-                  <Bar dataKey="current" fill="#3b82f6" name="current" />
-                  <Bar dataKey="required" fill="#e5e7eb" name="required" />
-                  <Bar dataKey="gap" name="gap">
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={getGapColor(entry.gap)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Skill Details */}
-            <div className="space-y-3">
-              <h4 className="font-medium text-gray-900">Priority Skills to Develop</h4>
-              {skillGaps.slice(0, 5).map((gap) => (
-                <div key={gap.skill} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <CardContent className="space-y-6">
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--background))',
+                  borderColor: 'hsl(var(--border))',
+                  color: 'hsl(var(--foreground))'
+                }} 
+              />
+              <Bar dataKey="current" fill="var(--primary)" name="Current Level" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="required" fill="var(--secondary)" name="Required Level" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <div>
+          <h4 className="font-semibold text-foreground mb-4">Priority Skills to Develop</h4>
+          <div className="space-y-4">
+            {skillGaps.map((gap, index) => (
+              <motion.div 
+                key={index} 
+                className="p-4 rounded-lg bg-background/50 border border-border"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">{gap.skill}</span>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        gap.gap >= 60 ? 'bg-red-100 text-red-700' :
-                        gap.gap >= 40 ? 'bg-orange-100 text-orange-700' :
-                        gap.gap >= 20 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
-                        {Math.round(gap.gap)}% gap
+                    <div className="flex items-center gap-3">
+                      <p className="font-bold text-foreground">{gap.skill}</p>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ backgroundColor: getGapColor(gap.gap), color: '#fff' }}>
+                        {gap.gap}% gap
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
-                      Current: {Math.round(gap.currentLevel)}% → Target: {Math.round(gap.requiredLevel)}%
-                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current: {gap.currentLevel}% &mdash; Target: {gap.requiredLevel}%
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium text-gray-700">
-                      Priority: {gap.importance >= 80 ? 'High' : gap.importance >= 60 ? 'Medium' : 'Low'}
-                    </div>
+                  <div className="mt-2 sm:mt-0">
+                    <span className={`text-sm font-semibold ${getPriorityColor(gap.priority || 'Low')}`}>
+                      Priority: {gap.priority || 'Low'}
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </>
-        )}
+                <Progress value={gap.currentLevel} className="mt-3 h-2" />
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

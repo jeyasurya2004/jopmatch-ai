@@ -658,8 +658,8 @@ Return a JSON object with the following structure:
 {
   "fitScore": number (0-100),
   "justification": "detailed explanation of the fit score",
-  "strengths": ["specific strength 1", "specific strength 2"],
-  "improvements": ["specific area for improvement 1", "specific area for improvement 2"]
+  "strengths": ["specific strength 1", "specific strength 2","specific strength ...n"],
+  "improvements": ["specific area for improvement 1", "specific area for improvement 2", "specific area for improvement ...n"]
 }
 
 IMPORTANT: 
@@ -687,7 +687,7 @@ IMPORTANT:
         model,
         messages,
         0.3,
-        3048,
+        4048,
         true
       );
 
@@ -922,27 +922,39 @@ IMPORTANT:
           ${searchContext}
           ---
 
-      **CRITICAL INSTRUCTIONS:**
-      1.  **Analyze and Select:** From the search results, select the **top 5-7 most relevant and high-quality** learning resources that address the skill gaps, keeping the candidate's resume in mind.
-      2.  **Ensure Variety:** Include a good mix of content types (e.g., official documentation, in-depth articles, and YouTube tutorials).
+           **Your Task & Critical Instructions:**
+      1.  **Parse and Select:** Carefully read through the raw search results. Identify the **top 7-10 best and most relevant** resources. Prioritize official documentation, well-known educational platforms (like freeCodeCamp, Udemy), and popular YouTube channels.
+      2.  **Generate Clean JSON:** For each selected resource, create a JSON object with the following fields. **ALL FIELDS ARE MANDATORY.**
+          *   \`title\`: The clean, user-friendly title of the resource.
+          *   \`skillCovered\`: A comma-separated list of the specific skills from the **Skill Gaps** list that this resource addresses.
+          *   \`description\`: A concise, one-sentence summary of what the resource offers. **Do not just copy the raw snippet.**
+          *   \`provider\`: The name of the website or channel (e.g., "freeCodeCamp", "Udemy", "Traversy Media").
+          *   \`link\`: The exact URL from the search result.
       3.  **Fill ALL Fields:** For every single learning path suggestion, you MUST provide a value for all fields: "title", "skillCovered", "description", "provider", and "link". Do not leave any field empty.
       4.  **Be Specific:** For the "provider", name the specific website or YouTube channel (e.g., "freeCodeCamp", "Traversy Media", "Official React Docs").
       5.  **Strict JSON Only:** Your entire response must be a single, valid JSON object and nothing else.
       
       **CRITICAL REMINDER:** The final output MUST start with \`{"learningPathSuggestions": [\` and be a single, complete JSON object.
 
-      **Required JSON Output Structure:**
+       **Perfect JSON Output Example:**
       {
         "learningPathSuggestions": [
           {
-            "title": "Example Title",
-            "skillCovered": "Example Skill",
-            "description": "Example description.",
-            "provider": "Example Provider",
-            "link": "https://example.com"
+            "title": "Fullstack Web Development Course for Beginners",
+            "skillCovered": "JavaScript, React, Node.js",
+            "description": "A comprehensive free course covering the MERN stack from the ground up, ideal for new developers.",
+            "provider": "freeCodeCamp",
+            "link": "https://www.youtube.com/watch?v=..."
+          },
+          {
+            "title": "React Official Documentation - Tic-Tac-Toe Tutorial",
+            "skillCovered": "React",
+            "description": "The official tutorial for learning the fundamental concepts of React by building a simple game.",
+            "provider": "Official React Docs",
+            "link": "https://react.dev/learn"
           }
         ],
-        "summary": "A concise, encouraging summary of the recommended learning plan."
+        "summary": "A curated list of top-tier resources to bridge your skill gaps and advance your career as a ${targetRole}."
       }
       `;
 
@@ -996,6 +1008,7 @@ IMPORTANT:
       
       **Perfect JSON Output Example:**
       {
+        "Overall Readiness Score": "0-100"
         "summary": "The candidate has a strong foundation in machine learning and AI. To pivot to a backend development role, the key is to build and showcase experience with relevant backend technologies and frameworks. The current resume is AI-focused and needs to be tailored to highlight transferable skills and new backend projects.",
         "strengths": [
           "Expert-level Python proficiency, a core skill for backend development.",
@@ -1033,7 +1046,7 @@ IMPORTANT:
           "Read 'Grokking the System Design Interview' or similar resources.",
           "Update your LinkedIn profile to reflect a focus on backend development and list your new projects."
         ],
-        "overallScore": 65
+        
       }
       `;
       

@@ -10,11 +10,12 @@ import { PersonalityChart } from './PersonalityChart';
 import { LearningPathList } from './LearningPathList';
 import { JobSuggestionList } from './JobSuggestionList';
 import { ResumeData, JobRole, RoleFitResult, SkillGap, PersonalityProfile, LearningPath, JobSuggestion } from '../types';
+import { Progress } from './ui/progress';
 
 import { skillAnalyzerAgent } from '../services/agents/SkillAnalyzerAgent';
 import { careerFitAgent } from '../services/agents/CareerFitAgent';
 import { personalityAgent } from '../services/agents/PersonalityAgent';
-import { recommendationAgent } from '../services/agents/RecommendationAgent';
+import { recommendationAgent } from '../services/agents/Recommendation-agent';
 import { jobFetcherAgent } from '../services/agents/JobFetcherAgent';
 import { feedbackAgent } from '../services/agents/FeedbackAgent';
 
@@ -72,7 +73,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
       setPersonalityProfile(personalityResult);
       setCurrentStep(5);
 
-
       const missingSkills = processedGaps.slice(0, 5).map(gap => gap.skill);
       const recommendationResult = await recommendationAgent.generateRecommendations(resumeData, selectedRole.title, missingSkills);
       
@@ -107,10 +107,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Card className="w-full shadow-xl bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+        <Card className="w-full shadow-xl bg-card text-card-foreground">
           <CardHeader className="text-center">
-            <CardTitle className="flex items-center justify-center gap-2">
-              <Brain className="w-6 h-6 text-blue-600 animate-pulse" />
+            <CardTitle className="flex items-center justify-center gap-2 text-primary">
+              <Brain className="w-6 h-6 animate-pulse" />
               AI Analysis in Progress
             </CardTitle>
             <CardDescription>
@@ -119,19 +119,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Step {currentStep} of {totalSteps}</span>
                 <span className="font-medium">{Math.round((currentStep / totalSteps) * 100)}%</span>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full transition-all duration-500"
-                  style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-                ></div>
-              </div>
+              <Progress value={(currentStep / totalSteps) * 100} className="h-2" />
             </div>
             <div className="text-center">
-              <div className="inline-flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-full">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full">
                 <RefreshCw className="w-4 h-4 animate-spin" />
                 {getStepName(currentStep)}
               </div>
@@ -145,13 +140,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
   return (
     <motion.div 
       className="max-w-7xl mx-auto space-y-8"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
       <div className="text-center">
         <motion.h2 
-          className="text-3xl font-bold text-gray-900 dark:text-white mb-2"
+          className="text-3xl font-bold text-foreground mb-2"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
@@ -159,7 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
           AI Analysis Complete for {resumeData.name}
         </motion.h2>
         <motion.p 
-          className="text-lg text-gray-600 dark:text-gray-400"
+          className="text-lg text-muted-foreground"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.5 }}
@@ -170,34 +165,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
 
       <motion.div 
         className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
       >
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{roleFitResult?.score || 0}%</div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Role Fit Score</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-orange-600">{skillGaps.length}</div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Skill Gaps</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">{learningPaths.length}</div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Learning Paths</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
-          <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-purple-600">{jobSuggestions.length}</div>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Job Matches</p>
-          </CardContent>
-        </Card>
+        <motion.div variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}>
+          <Card className="bg-card text-card-foreground border-border shadow-lg h-full">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-blue-500">{roleFitResult?.score || 0}%</div>
+              <p className="text-sm text-muted-foreground">Role Fit Score</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+        <motion.div variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}>
+          <Card className="bg-card text-card-foreground border-border shadow-lg h-full">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-orange-500">{skillGaps.length}</div>
+              <p className="text-sm text-muted-foreground">Skill Gaps</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+        <motion.div variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}>
+          <Card className="bg-card text-card-foreground border-border shadow-lg h-full">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-500">{learningPaths.length}</div>
+              <p className="text-sm text-muted-foreground">Learning Paths</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+        <motion.div variants={{ hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } }}>
+          <Card className="bg-card text-card-foreground border-border shadow-lg h-full">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-purple-500">{jobSuggestions.length}</div>
+              <p className="text-sm text-muted-foreground">Job Matches</p>
+            </CardContent>
+          </Card>
+        </motion.div>
       </motion.div>
 
       <motion.div
@@ -206,7 +217,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
         transition={{ delay: 0.6, duration: 0.5 }}
       >
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 bg-muted text-muted-foreground">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="skills">Skills</TabsTrigger>
             <TabsTrigger value="personality">Personality</TabsTrigger>
@@ -227,85 +238,85 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
             <JobSuggestionList jobSuggestions={jobSuggestions} />
           </TabsContent>
           <TabsContent value="feedback" className="space-y-6">
-            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg">
+            <Card className="bg-card text-card-foreground border-border shadow-lg">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><MessageSquare className="w-6 h-6 text-blue-600" />Comprehensive Feedback Report</CardTitle>
+                <CardTitle className="flex items-center gap-2"><MessageSquare className="w-6 h-6 text-primary" />Comprehensive Feedback Report</CardTitle>
                 <CardDescription>AI-generated insights and career guidance</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {finalFeedback ? (
                   <>
-                    <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
-                      <div className="text-3xl font-bold text-blue-600 mb-2">{finalFeedback.overallReadinessScore !== undefined ? finalFeedback.overallReadinessScore : 0}/100</div>
-                      <p className="text-gray-600 dark:text-gray-400">Overall Readiness Score</p>
+                    <div className="text-center p-6 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg">
+                      <div className="text-3xl font-bold text-primary mb-2">{finalFeedback.overallReadinessScore !== undefined ? finalFeedback.overallReadinessScore : 0}/100</div>
+                      <p className="text-muted-foreground">Overall Readiness Score</p>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Summary</h4>
-                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{finalFeedback.summary || 'No summary available'}</p>
+                      <h4 className="font-semibold text-foreground mb-2">Summary</h4>
+                      <p className="text-foreground/80 leading-relaxed">{finalFeedback.summary || 'No summary available'}</p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Strengths</h4>
+                        <h4 className="font-semibold text-foreground mb-3">Strengths</h4>
                         {finalFeedback.strengths && finalFeedback.strengths.length > 0 ? (
                           <ul className="space-y-2">
                             {finalFeedback.strengths.map((strength: any, index: number) => (
                               <li key={index} className="flex items-start gap-2">
                                 <div className="w-1.5 h-1.5 bg-green-500 rounded-full mt-2"></div>
-                                <span className="text-gray-700 dark:text-gray-300">{typeof strength === 'string' ? strength : (strength.area || strength.suggestion || 'Strength')}</span>
+                                <span className="text-foreground/80">{typeof strength === 'string' ? strength : (strength.area || strength.suggestion || 'Strength')}</span>
                               </li>
                             ))}
                           </ul>
-                        ) : (<p className="text-gray-500">No strengths identified</p>)}
+                        ) : (<p className="text-muted-foreground">No strengths identified</p>)}
                       </div>
                       <div>
-                        <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Areas for Improvement</h4>
+                        <h4 className="font-semibold text-foreground mb-3">Areas for Improvement</h4>
                         {finalFeedback.areasForImprovement && finalFeedback.areasForImprovement.length > 0 ? (
                           <ul className="space-y-2">
                             {finalFeedback.areasForImprovement.map((area: any, index: number) => (
                               <li key={index} className="flex flex-col gap-1">
                                 <div className="flex items-start gap-2">
                                   <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2"></div>
-                                  <span className="text-gray-700 dark:text-gray-300 font-medium">{typeof area === 'string' ? area : (area.area || area.suggestion || 'Area for improvement')}</span>
+                                  <span className="text-foreground/80 font-medium">{typeof area === 'string' ? area : (area.area || area.suggestion || 'Area for improvement')}</span>
                                 </div>
                               </li>
                             ))}
                           </ul>
-                        ) : (<p className="text-gray-500">No areas for improvement identified</p>)}
+                        ) : (<p className="text-muted-foreground">No areas for improvement identified</p>)}
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Key Recommendations</h4>
+                      <h4 className="font-semibold text-foreground mb-2">Key Recommendations</h4>
                       {finalFeedback.keyRecommendations && finalFeedback.keyRecommendations.length > 0 ? (
                         <div className="space-y-3">
                           {finalFeedback.keyRecommendations.map((rec: any, index: number) => (
-                            <div key={index} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                              <p className="text-gray-700 dark:text-gray-300 text-sm">{renderRecommendation(rec) || 'No recommendation provided'}</p>
+                            <div key={index} className="p-3 bg-primary/10 rounded-lg border border-border">
+                              <p className="text-foreground/80 text-sm">{renderRecommendation(rec) || 'No recommendation provided'}</p>
                             </div>
                           ))}
                         </div>
-                      ) : (<p className="text-gray-500">No specific recommendations available</p>)}
+                      ) : (<p className="text-muted-foreground">No specific recommendations available</p>)}
                     </div>
                     <div>
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Next Steps</h4>
+                      <h4 className="font-semibold text-foreground mb-3">Next Steps</h4>
                       {finalFeedback.nextSteps && finalFeedback.nextSteps.length > 0 ? (
                         <ol className="space-y-2">
                           {finalFeedback.nextSteps.map((step: any, index: number) => (
                             <li key={index} className="flex items-start gap-3">
-                              <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">{index + 1}</div>
-                              <span className="text-gray-700 dark:text-gray-300">{typeof step === 'string' ? step : (step.recommendation || step.suggestion || 'Next step')}</span>
+                              <div className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center text-sm font-medium">{index + 1}</div>
+                              <span className="text-foreground/80">{typeof step === 'string' ? step : (step.recommendation || step.suggestion || 'Next step')}</span>
                             </li>
                           ))}
                         </ol>
-                      ) : (<p className="text-gray-500">No next steps provided</p>)}
+                      ) : (<p className="text-muted-foreground">No next steps provided</p>)}
                     </div>
-                    <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                      <p className="text-green-800 dark:text-green-300 font-medium">{finalFeedback.encouragement || 'Keep working on your career development!'}</p>
+                    <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <p className="text-green-500 font-medium">{finalFeedback.encouragement || 'Keep working on your career development!'}</p>
                     </div>
                   </>
                 ) : (
                   <div className="text-center py-8">
-                    <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Feedback analysis in progress</p>
+                    <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">Feedback analysis in progress</p>
                   </div>
                 )}
               </CardContent>
@@ -317,7 +328,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ resumeData, selectedRole }
         className="flex flex-col sm:flex-row justify-center gap-4"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8, duration: 0.5 }} // Staggered delay
+        transition={{ delay: 0.8, duration: 0.5 }}
       >
         <Button onClick={runAgentPipeline} className="flex items-center gap-2"><RefreshCw className="w-4 h-4" />Re-analyze</Button>
         <Button variant="outline" className="flex items-center gap-2"><Download className="w-4 h-4" />Download Report</Button>
