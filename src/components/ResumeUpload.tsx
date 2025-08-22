@@ -95,98 +95,194 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({ onResumeProcessed })
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <Card className="w-full max-w-2xl mx-auto shadow-xl border-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="w-6 h-6 text-blue-600" />
-          Upload Your Resume
-        </CardTitle>
-        <CardDescription>
-          Upload your resume in PDF, DOCX, image, or text format. Our AI will analyze your information.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div
-          className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragActive 
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-              : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
-          } ${uploading ? 'pointer-events-none opacity-50' : ''}`}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            accept=".pdf,.jpg,.jpeg,.png,.txt,.docx" // Updated accept attribute
-            onChange={handleChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            disabled={uploading}
-          />
-          
-          <div className="space-y-4">
-            <AnimatePresence mode="wait">
-              {uploading ? (
-                <motion.div
-                  key="uploading"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="animate-pulse"
-                >
-                  <Upload className="w-12 h-12 text-blue-500 mx-auto animate-bounce" />
-                  <p className="text-lg font-medium text-gray-700 dark:text-gray-300">Processing Resume...</p>
-                </motion.div>
-              ) : uploadStatus === 'success' ? (
-                <motion.div
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="text-green-600"
-                >
-                  <CheckCircle className="w-12 h-12 mx-auto" />
-                  <p className="text-lg font-medium">Resume Processed!</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{fileName}</p>
-                </motion.div>
-              ) : uploadStatus === 'error' ? (
-                <motion.div
-                  key="error"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="text-red-600"
-                >
-                  <AlertCircle className="w-12 h-12 mx-auto" />
-                  <p className="text-lg font-medium">Upload Failed</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Please try a valid file format.</p>
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="default"
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                >
-                  <Upload className="w-12 h-12 text-gray-400 mx-auto" />
-                  <p className="text-lg font-medium text-gray-700 dark:text-gray-300">
-                    Drag and drop your resume here
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    or click to browse files
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      <Card className="w-full max-w-3xl mx-auto shadow-strong border-0 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 dark:from-blue-900/20 dark:to-purple-900/20 border-b border-gray-200/50 dark:border-gray-700/50">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <motion.div
+                className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg"
+                whileHover={{ rotate: 5, scale: 1.1 }}
+                transition={{ duration: 0.2 }}
+              >
+                <FileText className="w-6 h-6 text-white" />
+              </motion.div>
+              <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                Upload Your Resume
+              </span>
+            </CardTitle>
+            <CardDescription className="text-base mt-2 text-muted-foreground">
+              Upload your resume in PDF, DOCX, image, or text format. Our AI will analyze your information with precision.
+            </CardDescription>
+          </motion.div>
+        </CardHeader>
+        <CardContent className="p-8">
+          <motion.div
+            className={`relative border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 ${
+              dragActive 
+                ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 scale-105' 
+                : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gradient-to-br hover:from-blue-50/30 hover:to-purple-50/30 dark:hover:from-blue-900/10 dark:hover:to-purple-900/10'
+            } ${uploading ? 'pointer-events-none opacity-70' : 'hover:scale-102'}`}
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            whileHover={{ scale: uploading ? 1 : 1.02 }}
+            transition={{ duration: 0.2 }}
+          >
+            <input
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.txt,.docx"
+              onChange={handleChange}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              disabled={uploading}
+            />
+            
+            <div className="space-y-6">
+              <AnimatePresence mode="wait">
+                {uploading ? (
+                  <motion.div
+                    key="uploading"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-4"
+                  >
+                    <motion.div
+                      animate={{ 
+                        rotate: 360,
+                        scale: [1, 1.1, 1]
+                      }}
+                      transition={{ 
+                        rotate: { duration: 2, repeat: Infinity, ease: "linear" },
+                        scale: { duration: 1, repeat: Infinity }
+                      }}
+                    >
+                      <Upload className="w-16 h-16 text-blue-500 mx-auto" />
+                    </motion.div>
+                    <div className="space-y-2">
+                      <p className="text-xl font-semibold text-foreground">Processing Resume...</p>
+                      <motion.div 
+                        className="w-32 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mx-auto overflow-hidden"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                      >
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+                          animate={{ x: ['-100%', '100%'] }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                ) : uploadStatus === 'success' ? (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="text-green-600 space-y-4"
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 200 }}
+                    >
+                      <CheckCircle className="w-16 h-16 mx-auto drop-shadow-lg" />
+                    </motion.div>
+                    <div className="space-y-2">
+                      <p className="text-xl font-semibold">Resume Processed Successfully!</p>
+                      <motion.p 
+                        className="text-sm text-muted-foreground bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-full inline-block"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                      >
+                        📄 {fileName}
+                      </motion.p>
+                    </div>
+                  </motion.div>
+                ) : uploadStatus === 'error' ? (
+                  <motion.div
+                    key="error"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-red-600 space-y-4"
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, -10, 10, -10, 0] }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <AlertCircle className="w-16 h-16 mx-auto drop-shadow-lg" />
+                    </motion.div>
+                    <div className="space-y-2">
+                      <p className="text-xl font-semibold">Upload Failed</p>
+                      <p className="text-sm text-muted-foreground">Please try a valid file format (PDF, DOCX, JPG, PNG, TXT).</p>
+                    </div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="default"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.5 }}
+                    className="space-y-6"
+                  >
+                    <motion.div
+                      animate={{ 
+                        y: [0, -10, 0],
+                        rotate: [0, 5, -5, 0]
+                      }}
+                      transition={{ 
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    >
+                      <Upload className="w-16 h-16 text-blue-500 mx-auto drop-shadow-lg" />
+                    </motion.div>
+                    <div className="space-y-3">
+                      <p className="text-xl font-semibold text-foreground">
+                        Drag and drop your resume here
+                      </p>
+                      <p className="text-muted-foreground">
+                        or click to browse files
+                      </p>
+                      <div className="flex flex-wrap justify-center gap-2 mt-4">
+                        {['PDF', 'DOCX', 'JPG', 'PNG', 'TXT'].map((format, index) => (
+                          <motion.span
+                            key={format}
+                            className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium"
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.1 * index, duration: 0.3 }}
+                            whileHover={{ scale: 1.1 }}
+                          >
+                            {format}
+                          </motion.span>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 };

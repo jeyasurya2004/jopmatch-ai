@@ -79,19 +79,218 @@ export const RoleSelection: React.FC<RoleSelectionProps> = ({ onRoleSelected, se
   const [hoveredRole, setHoveredRole] = useState<string | null>(null);
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Select Your Target Role</h2>
-        <p className="text-lg text-gray-600">
+    <div className="w-full max-w-7xl mx-auto space-y-10">
+      <div className="text-center space-y-4">
+        <motion.h2 
+          className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          Select Your Target Role
+        </motion.h2>
+        <motion.p 
+          className="text-xl text-muted-foreground max-w-2xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+        >
           Choose the role you're interested in to get personalized job matching analysis
-        </p>
+        </motion.p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div 
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.4, duration: 0.6 }}
+      >
         {availableRoles.map((role) => (
-          <Card
+          <motion.div
             key={role.id}
-            className={`cursor-pointer transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 ${
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 * index, duration: 0.5 }}
+            whileHover={{ y: -8, scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <Card
+              className={`cursor-pointer transition-all duration-500 group relative overflow-hidden ${
+                selectedRole?.id === role.id
+                  ? 'ring-2 ring-blue-500 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 shadow-strong border-blue-200 dark:border-blue-700'
+                  : 'hover:shadow-strong hover:border-blue-300 dark:hover:border-blue-600 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm'
+              }`}
+              onMouseEnter={() => setHoveredRole(role.id)}
+              onMouseLeave={() => setHoveredRole(null)}
+              onClick={() => onRoleSelected(role)}
+            >
+              {/* Animated background gradient */}
+              <div className={`absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 ${
+                selectedRole?.id === role.id ? 'opacity-100' : ''
+              }`} />
+              
+              <CardHeader className="pb-4 relative z-10">
+                <div className="flex items-center gap-4 mb-3">
+                  <motion.div 
+                    className={`p-3 rounded-xl transition-all duration-300 ${
+                      selectedRole?.id === role.id
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-medium'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:bg-gradient-to-r group-hover:from-blue-500 group-hover:to-purple-500 group-hover:text-white'
+                    }`}
+                    whileHover={{ rotate: 5, scale: 1.1 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {roleIcons[role.id]}
+                  </motion.div>
+                  <div className="flex-1">
+                    <CardTitle className="text-xl font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
+                      {role.title}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground font-medium mt-1">{role.experience}</p>
+                  </div>
+                </div>
+                <CardDescription className="text-sm leading-relaxed text-muted-foreground">
+                  {role.description}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="pt-0 relative z-10">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                      Key Skills:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {role.requiredSkills.slice(0, 4).map((skill, skillIndex) => (
+                        <motion.span
+                          key={skill}
+                          className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full font-medium transition-all duration-300 hover:bg-blue-200 dark:hover:bg-blue-900/50"
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.1 * skillIndex, duration: 0.3 }}
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          {skill}
+                        </motion.span>
+                      ))}
+                      {role.requiredSkills.length > 4 && (
+                        <motion.span 
+                          className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded-full font-medium"
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          +{role.requiredSkills.length - 4} more
+                        </motion.span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center text-sm pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+                    <span className="font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
+                      💰 {role.salary}
+                    </span>
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      📍 {role.location}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+              
+              {/* Selection indicator */}
+              {selectedRole?.id === role.id && (
+                <motion.div
+                  className="absolute top-4 right-4 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center"
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ duration: 0.3, type: "spring", stiffness: 200 }}
+                >
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </motion.div>
+              )}
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {selectedRole && (
+        <motion.div 
+          className="mt-12 p-8 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-2xl border border-blue-200/50 dark:border-blue-700/50 backdrop-blur-sm shadow-medium"
+          initial={{ opacity: 0, y: 30, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <div className="flex items-start gap-6">
+            <motion.div 
+              className="p-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl shadow-medium"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.2, duration: 0.5, type: "spring", stiffness: 150 }}
+            >
+              {roleIcons[selectedRole.id]}
+            </motion.div>
+            <div className="flex-1 space-y-4">
+              <div>
+                <motion.h3 
+                  className="text-2xl font-bold text-foreground"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3, duration: 0.5 }}
+                >
+                  {selectedRole.title}
+                </motion.h3>
+                <motion.p 
+                  className="text-blue-600 dark:text-blue-400 font-medium flex items-center gap-2"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                >
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  Selected for analysis
+                </motion.p>
+              </div>
+              <motion.p 
+                className="text-muted-foreground leading-relaxed"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+              >
+                {selectedRole.description}
+              </motion.p>
+              <motion.div 
+                className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6, duration: 0.5 }}
+              >
+                <div className="space-y-1">
+                  <span className="font-semibold text-foreground flex items-center gap-2">
+                    🎯 Experience Level:
+                  </span>
+                  <p className="text-muted-foreground font-medium">{selectedRole.experience}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="font-semibold text-foreground flex items-center gap-2">
+                    💰 Salary Range:
+                  </span>
+                  <p className="text-green-600 dark:text-green-400 font-semibold">{selectedRole.salary}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="font-semibold text-foreground flex items-center gap-2">
+                    📍 Location:
+                  </span>
+                  <p className="text-muted-foreground font-medium">{selectedRole.location}</p>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
               selectedRole?.id === role.id
                 ? 'ring-2 ring-blue-500 bg-blue-50'
                 : hoveredRole === role.id
